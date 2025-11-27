@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Run Ultracite fix before commit
+cd backend && npx ultracite fix

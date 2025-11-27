@@ -1,21 +1,48 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
+# Dependencies
+node_modules/
+*/node_modules/
+bun.lock
+*.lock
+
+# Build outputs
 dist/
-wheels/
-*.egg-info
+build/
+*.tsbuildinfo
 
-# Virtual environments
-.venv
-
-# Keys and secrets
+# Environment & secrets
 .env
+.env.local
+.env.*.local
 
 # Data files
 data/
 
 # Frontend
-frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+
+# Backend
+backend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.turbo/

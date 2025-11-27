@@ -139,15 +139,16 @@
 .send-button {
   padding: 14px 28px;
   background: #4a90e2;
-  border: 1px solid #4a90e2;
+  border: 2px solid #4a90e2;
   border-radius: 8px;
   color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, outline 0.2s;
   white-space: nowrap;
   align-self: flex-end;
+  outline: none;
 }
 
 .send-button:hover:not(:disabled) {
@@ -155,9 +156,14 @@
   border-color: #357abd;
 }
 
+.send-button:focus:not(:disabled) {
+  outline: 3px solid rgba(74, 144, 226, 0.5);
+  outline-offset: 2px;
+}
+
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #ccc;
-  border-color: #ccc;
+  background: #999;
+  border-color: #999;
 }

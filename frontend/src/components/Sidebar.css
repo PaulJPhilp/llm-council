@@ -22,18 +22,24 @@
   width: 100%;
   padding: 10px;
   background: #4a90e2;
-  border: 1px solid #4a90e2;
+  border: 2px solid #4a90e2;
   border-radius: 6px;
   color: #fff;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
+  transition: background 0.2s, outline 0.2s;
   font-weight: 500;
+  outline: none;
 }
 
 .new-conversation-btn:hover {
   background: #357abd;
   border-color: #357abd;
+}
+
+.new-conversation-btn:focus {
+  outline: 3px solid rgba(74, 144, 226, 0.5);
+  outline-offset: 2px;
 }
 
 .conversation-list {
@@ -49,21 +55,39 @@
   font-size: 14px;
 }
 
+.conversation-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 .conversation-item {
+  display: block;
+  width: 100%;
   padding: 12px;
   margin-bottom: 4px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, outline 0.2s;
+  border: 2px solid transparent;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  outline: none;
 }
 
 .conversation-item:hover {
   background: #f0f0f0;
 }
 
+.conversation-item:focus {
+  outline: 3px solid rgba(74, 144, 226, 0.5);
+  outline-offset: -2px;
+}
+
 .conversation-item.active {
   background: #e8f0fe;
-  border: 1px solid #4a90e2;
+  border: 2px solid #4a90e2;
 }
 
 .conversation-title {

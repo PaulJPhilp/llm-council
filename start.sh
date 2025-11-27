@@ -5,10 +5,20 @@
 echo "Starting LLM Council..."
 echo ""
 
+# Check if backend node_modules exist, if not install dependencies
+if [ ! -d "backend/node_modules" ]; then
+  echo "Installing backend dependencies..."
+  cd backend
+  bun install
+  cd ..
+fi
+
 # Start backend
 echo "Starting backend on http://localhost:8001..."
-uv run python -m backend.main &
+cd backend
+bun run dev &
 BACKEND_PID=$!
+cd ..
 
 # Wait a bit for backend to start
 sleep 2
@@ -16,7 +26,7 @@ sleep 2
 # Start frontend
 echo "Starting frontend on http://localhost:5173..."
 cd frontend
-npm run dev &
+bun run dev &
 FRONTEND_PID=$!
 
 echo ""

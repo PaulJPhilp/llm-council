@@ -23,18 +23,24 @@
 .tab {
   padding: 8px 16px;
   background: #ffffff;
-  border: 1px solid #d0d0d0;
+  border: 2px solid #d0d0d0;
   border-radius: 6px 6px 0 0;
   color: #666;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  outline: none;
 }
 
 .tab:hover {
   background: #f0f0f0;
   color: #333;
   border-color: #4a90e2;
+}
+
+.tab:focus {
+  outline: 3px solid rgba(74, 144, 226, 0.5);
+  outline-offset: -2px;
 }
 
 .tab.active {
