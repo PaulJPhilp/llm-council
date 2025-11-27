@@ -1,9 +1,9 @@
-import { type FC, useEffect, useState } from "react";
+import { type FC, useCallback, useEffect, useState } from "react";
 import { api } from "./api";
+import "./App.css";
 import ChatInterface from "./components/ChatInterface";
 import Sidebar from "./components/Sidebar";
 import type { Conversation, ConversationMetadata, StreamEvent } from "./types";
-import "./App.css";
 
 type ExtendedMessage = {
   role: string;
@@ -31,6 +31,26 @@ const App: FC = () => {
   >(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const loadConversations = useCallback(async () => {
+    try {
+      const convs = await api.listConversations();
+      setConversations(convs);
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+    }
+  }, []);
+
+  const loadConversation = useCallback(async (id: string) => {
+    try {
+      const conv = await api.getConversation(id);
+      setCurrentConversation(
+        conv as Conversation & { messages: ExtendedMessage[] }
+      );
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+    }
+  }, []);
+
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
@@ -42,26 +62,6 @@ const App: FC = () => {
       loadConversation(currentConversationId);
     }
   }, [currentConversationId, loadConversation]);
-
-  const loadConversations = async () => {
-    try {
-      const convs = await api.listConversations();
-      setConversations(convs);
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-    }
-  };
-
-  const loadConversation = async (id: string) => {
-    try {
-      const conv = await api.getConversation(id);
-      setCurrentConversation(
-        conv as Conversation & { messages: ExtendedMessage[] }
-      );
-    } catch (error) {
-      console.error("Failed to load conversation:", error);
-    }
-  };
 
   const handleNewConversation = async () => {
     try {
@@ -142,7 +142,7 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                if (lastMsg.loading) {
+                if (lastMsg?.loading) {
                   lastMsg.loading.stage1 = true;
                 }
                 return { ...prev, messages };
@@ -156,9 +156,11 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                lastMsg.stage1 = event.data;
-                if (lastMsg.loading) {
-                  lastMsg.loading.stage1 = false;
+                if (lastMsg) {
+                  lastMsg.stage1 = event.data;
+                  if (lastMsg.loading) {
+                    lastMsg.loading.stage1 = false;
+                  }
                 }
                 return { ...prev, messages };
               });
@@ -171,7 +173,7 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                if (lastMsg.loading) {
+                if (lastMsg?.loading) {
                   lastMsg.loading.stage2 = true;
                 }
                 return { ...prev, messages };
@@ -185,11 +187,13 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                lastMsg.stage2 = event.data;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                lastMsg.metadata = (event as any).metadata;
-                if (lastMsg.loading) {
-                  lastMsg.loading.stage2 = false;
+                if (lastMsg) {
+                  lastMsg.stage2 = event.data;
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  lastMsg.metadata = (event as any).metadata;
+                  if (lastMsg.loading) {
+                    lastMsg.loading.stage2 = false;
+                  }
                 }
                 return { ...prev, messages };
               });
@@ -202,7 +206,7 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                if (lastMsg.loading) {
+                if (lastMsg?.loading) {
                   lastMsg.loading.stage3 = true;
                 }
                 return { ...prev, messages };
@@ -216,9 +220,11 @@ const App: FC = () => {
                 }
                 const messages = [...prev.messages];
                 const lastMsg = messages.at(-1);
-                lastMsg.stage3 = event.data;
-                if (lastMsg.loading) {
-                  lastMsg.loading.stage3 = false;
+                if (lastMsg) {
+                  lastMsg.stage3 = event.data;
+                  if (lastMsg.loading) {
+                    lastMsg.loading.stage3 = false;
+                  }
                 }
                 return { ...prev, messages };
               });

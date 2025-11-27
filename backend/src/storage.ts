@@ -1,6 +1,6 @@
+import { Effect, Either, Layer } from "effect";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
-import { Effect, Layer } from "effect";
 import { z } from "zod";
 import { AppConfig } from "./config";
 import { StorageError } from "./errors";
@@ -265,12 +265,12 @@ export class StorageService extends Effect.Service<StorageService>()(
 
         for (const filename of files) {
           if (filename.endsWith(".json")) {
-            const _path = join(config.dataDir, filename);
+            // const path = join(config.dataDir, filename);
             const conversation = yield* Effect.either(
               getConversation(filename.replace(".json", ""))
             );
 
-            if (Effect.isRight(conversation)) {
+            if (Either.isRight(conversation)) {
               const conv = conversation.right;
               if (conv) {
                 conversations.push({
@@ -386,8 +386,8 @@ export class StorageService extends Effect.Service<StorageService>()(
 ) {}
 
 // Create a default layer that provides both AppConfig and StorageService
-export const StorageServiceLive = AppConfig.Default.pipe(
-  Layer.provide(StorageService.Default)
+export const StorageServiceLive = StorageService.Default.pipe(
+  Layer.provide(AppConfig.Default)
 );
 
 // Standalone function exports for backward compatibility
@@ -411,7 +411,7 @@ export const listConversations = () =>
   Effect.runSync(
     Effect.gen(function* () {
       const storage = yield* StorageService;
-      return yield* storage.listConversations();
+      return yield* storage.listConversations;
     }).pipe(Effect.provide(StorageServiceLive))
   );
 

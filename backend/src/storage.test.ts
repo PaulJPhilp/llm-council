@@ -1,17 +1,17 @@
 import { promises as fs } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
-  addAssistantMessage,
-  addUserMessage,
-  createConversation,
-  getConversation,
-  listConversations,
-  updateConversationTitle,
+    addAssistantMessage,
+    addUserMessage,
+    createConversation,
+    getConversation,
+    listConversations,
+    updateConversationTitle,
 } from "./storage";
 
 // Use a test data directory
 const TEST_DATA_DIR = "data/test-conversations";
-const _originalDataDir = process.env.DATA_DIR;
+// const _originalDataDir = process.env.DATA_DIR;
 
 // Mock DATA_DIR for testing
 process.env.DATA_DIR = TEST_DATA_DIR;

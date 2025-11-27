@@ -3,10 +3,10 @@ import { AppConfig } from "./config";
 import { CouncilError } from "./errors";
 import { OpenRouterClient } from "./openrouter";
 import {
-  type Stage1Response,
-  type Stage2Response,
-  type Stage3Response,
-  StorageService,
+    type Stage1Response,
+    type Stage2Response,
+    type Stage3Response,
+    StorageService,
 } from "./storage";
 
 export type LabelToModelMap = {
@@ -39,7 +39,7 @@ export class CouncilService extends Effect.Service<CouncilService>()(
     effect: Effect.gen(function* () {
       const config = yield* AppConfig;
       const openRouter = yield* OpenRouterClient;
-      const _storage = yield* StorageService;
+      // const _storage = yield* StorageService;
 
       /**
        * Stage 1: Collect individual responses from all council models
@@ -394,10 +394,17 @@ Title:`;
 ) {}
 
 // Create a default layer that provides all required services
-export const CouncilServiceLive = AppConfig.Default.pipe(
-  Layer.provide(StorageService.Default),
-  Layer.provide(OpenRouterClient.Default),
-  Layer.provide(CouncilService.Default)
+// Create a default layer that provides all required services
+const BaseLayer = AppConfig.Default;
+const ServicesLayer = Layer.mergeAll(
+  StorageService.Default,
+  OpenRouterClient.Default
+).pipe(Layer.provide(BaseLayer));
+
+const DependenciesLayer = Layer.merge(ServicesLayer, BaseLayer);
+
+export const CouncilServiceLive = CouncilService.Default.pipe(
+  Layer.provide(DependenciesLayer)
 );
 
 // Standalone function exports for backward compatibility
@@ -405,7 +412,7 @@ export const parseRankingFromText = (rankingText: string): string[] =>
   Effect.runSync(
     Effect.gen(function* () {
       const council = yield* CouncilService;
-      return yield* council.parseRankingFromText(rankingText);
+      return council.parseRankingFromText(rankingText);
     }).pipe(Effect.provide(CouncilServiceLive))
   );
 
@@ -416,7 +423,7 @@ export const calculateAggregateRankings = (
   Effect.runSync(
     Effect.gen(function* () {
       const council = yield* CouncilService;
-      return yield* council.calculateAggregateRankings(
+      return council.calculateAggregateRankings(
         stage2Results,
         labelToModel
       );

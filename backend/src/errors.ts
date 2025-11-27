@@ -28,6 +28,7 @@ export class StorageError extends Data.TaggedError("StorageError")<{
   readonly message: string;
   readonly operation: string;
   readonly path?: string;
+  readonly cause?: unknown;
 }> {}
 
 export class ConversationNotFoundError extends Data.TaggedError(

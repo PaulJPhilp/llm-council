@@ -3,7 +3,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import app from "./main";
 // biome-ignore lint/performance/noNamespaceImport: Required for vi.spyOn() to work
 import * as storageModule from "./storage";
-import { getConversation } from "./storage";
 
 // Test data directory
 const TEST_DATA_DIR = "data/test-conversations-api";
@@ -37,7 +36,7 @@ describe("API Endpoints", () => {
       const res = await app.fetch(req);
       expect(res.status).toBe(200);
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toMatchObject({
         status: "ok",
         service: "LLM Council API",
@@ -56,7 +55,7 @@ describe("API Endpoints", () => {
       const res = await app.fetch(req);
       expect(res.status).toBe(200);
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json).toHaveProperty("id");
       expect(json).toHaveProperty("created_at");
       expect(json.title).toBe("New Conversation");
@@ -71,7 +70,7 @@ describe("API Endpoints", () => {
         body: JSON.stringify({}),
       });
       const createRes = await app.fetch(createReq);
-      const conversation = await createRes.json();
+      const conversation = (await createRes.json()) as any;
 
       // List conversations
       const listReq = new Request("http://localhost:8001/api/conversations", {
@@ -80,7 +79,7 @@ describe("API Endpoints", () => {
       const listRes = await app.fetch(listReq);
       expect(listRes.status).toBe(200);
 
-      const list = await listRes.json();
+      const list = (await listRes.json()) as any[];
       expect(Array.isArray(list)).toBe(true);
       expect(list.length).toBe(1);
       expect(list[0]).toMatchObject({
@@ -98,7 +97,7 @@ describe("API Endpoints", () => {
         body: JSON.stringify({}),
       });
       const createRes = await app.fetch(createReq);
-      const conversation = await createRes.json();
+      const conversation = (await createRes.json()) as any;
 
       // Get the conversation
       const getReq = new Request(
@@ -110,7 +109,7 @@ describe("API Endpoints", () => {
       const getRes = await app.fetch(getReq);
       expect(getRes.status).toBe(200);
 
-      const retrieved = await getRes.json();
+      const retrieved = (await getRes.json()) as any;
       expect(retrieved.id).toBe(conversation.id);
       expect(retrieved.title).toBe("New Conversation");
     });
@@ -126,7 +125,7 @@ describe("API Endpoints", () => {
       const res = await app.fetch(req);
       expect(res.status).toBe(404);
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json.error).toBe("Conversation not found");
     });
   });
@@ -140,7 +139,7 @@ describe("API Endpoints", () => {
         body: JSON.stringify({}),
       });
       const createRes = await app.fetch(createReq);
-      const conversation = await createRes.json();
+      const conversation = (await createRes.json()) as any;
 
       // Try to send a message without content
       const req = new Request(
@@ -169,7 +168,7 @@ describe("API Endpoints", () => {
       const res = await app.fetch(req);
       expect(res.status).toBe(404);
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json.error).toBe("Conversation not found");
     });
 
@@ -181,7 +180,7 @@ describe("API Endpoints", () => {
         body: JSON.stringify({}),
       });
       const createRes = await app.fetch(createReq);
-      const conversation = await createRes.json();
+      const conversation = (await createRes.json()) as any;
 
       // Try to send a message without content
       const req = new Request(
@@ -210,7 +209,7 @@ describe("API Endpoints", () => {
       const res = await app.fetch(req);
       expect(res.status).toBe(404);
 
-      const json = await res.json();
+      const json = (await res.json()) as any;
       expect(json.error).toBe("Conversation not found");
     });
   });
@@ -248,7 +247,7 @@ describe("API Endpoints", () => {
         body: JSON.stringify({}),
       });
       const createRes = await app.fetch(createReq);
-      const conversation = await createRes.json();
+      const conversation = (await createRes.json()) as any;
       expect(conversation.id).toBeDefined();
 
       // 2. Get conversation
@@ -259,7 +258,7 @@ describe("API Endpoints", () => {
         }
       );
       const getRes = await app.fetch(getReq);
-      const retrieved = await getRes.json();
+      const retrieved = (await getRes.json()) as any;
       expect(retrieved.id).toBe(conversation.id);
       expect(retrieved.messages).toHaveLength(0);
 
@@ -268,7 +267,7 @@ describe("API Endpoints", () => {
         method: "GET",
       });
       const listRes = await app.fetch(listReq);
-      const list = await listRes.json();
+      const list = (await listRes.json()) as any[];
       expect(list.length).toBeGreaterThan(0);
 
       const found = list.find((c: any) => c.id === conversation.id);
@@ -280,7 +279,7 @@ describe("API Endpoints", () => {
   describe("Error Handling", () => {
     it("should return 500 on internal server error", async () => {
       // This test mocks a storage error
-      const _originalGetConversation = getConversation;
+      // const _originalGetConversation = getConversation;
       vi.spyOn(storageModule, "getConversation").mockRejectedValueOnce(
         new Error("Storage error")
       );

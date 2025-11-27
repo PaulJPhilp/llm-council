@@ -1,4 +1,4 @@
-import { Chunk, Effect, Stream } from "effect";
+import { Chunk, Effect, Either, Stream } from "effect";
 import { z } from "zod";
 import { AppConfig } from "./config";
 import { OpenRouterError } from "./errors";
@@ -103,7 +103,10 @@ export class OpenRouterClient extends Effect.Service<OpenRouterClient>()(
       /**
        * Query multiple models in parallel using Effect streams
        */
-      const queryModelsParallel = (models: string[], messages: ChatMessage[]) =>
+      const queryModelsParallel = (
+        models: readonly string[],
+        messages: ChatMessage[]
+      ) =>
         Effect.gen(function* () {
           const results = yield* Stream.fromIterable(models).pipe(
             Stream.mapEffect((model) =>
@@ -116,7 +119,7 @@ export class OpenRouterClient extends Effect.Service<OpenRouterClient>()(
 
           return Chunk.toReadonlyArray(results).reduce(
             (acc, [model, result]) => {
-              acc[model] = Effect.isLeft(result) ? null : result.right;
+              acc[model] = Either.isLeft(result) ? null : result.right;
               return acc;
             },
             {} as Record<string, OpenRouterResponse | null>
