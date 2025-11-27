@@ -23,8 +23,7 @@ In a bit more detail, here is what happens when you submit a query:
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- Bun 1.0+
 - OpenRouter API key
 
 ### 1. Install Dependencies
@@ -32,13 +31,13 @@ In a bit more detail, here is what happens when you submit a query:
 **Backend (TypeScript):**
 ```bash
 cd backend
-npm install
+bun install
 ```
 
 **Frontend:**
 ```bash
 cd frontend
-npm install
+bun install
 ```
 
 ### 2. Configure API Key
@@ -80,13 +79,13 @@ export const CHAIRMAN_MODEL = 'google/gemini-3-pro-preview';
 Terminal 1 (Backend):
 ```bash
 cd backend
-npm run dev
+bun run dev
 ```
 
 Terminal 2 (Frontend):
 ```bash
 cd frontend
-npm run dev
+bun run dev
 ```
 
 Then open http://localhost:5173 in your browser.
@@ -96,8 +95,8 @@ Then open http://localhost:5173 in your browser.
 ### Run Unit Tests
 ```bash
 cd backend
-npm test                # Watch mode
-npm run test:run        # Run once
+bun test                # Watch mode
+bun run test:run        # Run once
 ```
 
 ### Run End-to-End Tests
@@ -110,8 +109,8 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing documentati
 
 ## Tech Stack
 
-- **Backend:** TypeScript + Node.js/Bun, Hono web framework, Effect for functional programming, Zod validation, Vitest testing
+- **Backend:** TypeScript + Bun, Hono web framework, Effect for functional programming, Zod validation, Vitest testing
 - **Frontend:** React 19 + Vite, react-markdown for rendering, Zustand state management
 - **Storage:** JSON files in `data/conversations/`
-- **Package Management:** npm/bun for both backend and frontend
+- **Package Management:** Bun for both backend and frontend
 - **Effects:** Effect for type-safe error handling, dependency injection, and concurrency

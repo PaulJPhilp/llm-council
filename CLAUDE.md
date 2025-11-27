@@ -40,21 +40,21 @@ The backend has been migrated from Python (FastAPI) to **TypeScript (Node.js + H
 **Development:**
 ```bash
 cd backend
-npm run dev    # Hot-reloading on port 8001
+bun run dev    # Hot-reloading on port 8001
 ```
 
 **Production:**
 ```bash
 cd backend
-npm run build
-npm run start
+bun run build
+bun run start
 ```
 
 **Testing:**
 ```bash
 cd backend
-npm test       # Run all tests
-npm run test:run # Run once (CI mode)
+bun test       # Run all tests
+bun run test:run # Run once (CI mode)
 ```
 
 ### Project Structure (TypeScript)
@@ -233,8 +233,8 @@ Models are hardcoded in `backend/src/config.ts`. Chairman can be same or differe
 
 ## Common Gotchas
 
-1. **TypeScript Build Errors**: Run `npm install` in backend directory if TypeScript can't find dependencies
-2. **Missing Node Modules**: Run `npm install` from `backend/` directory, not from root
+1. **TypeScript Build Errors**: Run `bun install` in backend directory if TypeScript can't find dependencies
+2. **Missing Node Modules**: Run `bun install` from `backend/` directory, not from root
 3. **CORS Issues**: Frontend must match allowed origins in `main.ts` CORS middleware (update both if changing)
 4. **Ranking Parse Failures**: If models don't follow format, fallback regex extracts any "Response X" patterns in order
 5. **Missing Metadata**: Metadata is ephemeral (not persisted), only available in API responses
@@ -257,8 +257,8 @@ Models are hardcoded in `backend/src/config.ts`. Chairman can be same or differe
 Run the test suite to verify the backend functionality:
 ```bash
 cd backend
-npm test           # Run with watch mode
-npm run test:run   # Run once (CI mode)
+bun test           # Run with watch mode
+bun run test:run   # Run once (CI mode)
 ```
 
 Tests include:

@@ -21,13 +21,13 @@ Thank you for your interest in contributing to LLM Council! This guide will help
 2. **Install backend dependencies**
    ```bash
    cd backend
-   npm install  # or: bun install
+   bun install
    ```
 
 3. **Install frontend dependencies**
    ```bash
    cd ../frontend
-   npm install  # or: bun install
+   bun install
    ```
 
 4. **Configure environment**
@@ -40,18 +40,18 @@ Thank you for your interest in contributing to LLM Council! This guide will help
 5. **Run tests**
    ```bash
    cd backend
-   npm test
+   bun test
    ```
 
 6. **Start development servers**
    ```bash
    # Terminal 1 - Backend
    cd backend
-   npm run dev
+   bun run dev
 
    # Terminal 2 - Frontend
    cd frontend
-   npm run dev
+   bun run dev
    ```
 
 ## Code Style
@@ -95,10 +95,10 @@ We use **Ultracite** (powered by Biome) for code formatting:
 
 ```bash
 # Check formatting
-npm run lint
+bun run lint
 
 # Auto-fix issues
-npm run lint:fix
+bun run lint:fix
 ```
 
 Formatting is enforced via pre-commit hooks.
@@ -153,16 +153,16 @@ describe("MyService", () => {
 
 ```bash
 # Watch mode
-npm test
+bun test
 
 # Run once (CI mode)
-npm run test:run
+bun run test:run
 
 # With coverage
-npm run test:coverage
+bun run test:coverage
 
 # UI mode
-npm run test:ui
+bun run test:ui
 ```
 
 ### Coverage Requirements
@@ -234,14 +234,14 @@ git checkout -b fix/bug-description
 ```bash
 # Backend
 cd backend
-npm run typecheck
-npm run lint
-npm test
+bun run typecheck
+bun run lint
+bun test
 
 # Frontend
 cd frontend
-npm run typecheck
-npm run lint
+bun run typecheck
+bun run lint
 ```
 
 ### 4. Commit Your Changes

@@ -5,18 +5,19 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "bunx tsx watch src/main.ts",
-    "build": "bunx tsc",
+    "dev": "bun --watch src/main.ts",
+    "build": "bun run build:tsc",
+    "build:tsc": "bun x tsc",
     "start": "bun run dist/main.js",
-    "test": "bunx vitest",
-    "test:run": "bunx vitest run",
-    "test:ui": "bunx vitest --ui",
-    "test:coverage": "bunx vitest run --coverage",
-    "typecheck": "bunx tsc --noEmit",
-    "lint": "bunx ultracite check",
-    "lint:fix": "bunx ultracite fix",
-    "format": "bunx ultracite fix",
-    "prepare": "bunx husky"
+    "test": "bun test",
+    "test:run": "bun test --run",
+    "test:ui": "bun x vitest --ui",
+    "test:coverage": "bun test --coverage",
+    "typecheck": "bun x tsc --noEmit",
+    "lint": "bun x ultracite check",
+    "lint:fix": "bun x ultracite fix",
+    "format": "bun x ultracite fix",
+    "prepare": "bun x husky"
   },
   "dependencies": {
     "@effect/platform": "^0.73.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
+    "@types/bun": "^1.1.15",
     "@types/node": "^20.19.25",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
@@ -35,6 +37,6 @@
     "vitest": "^1.6.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "bun": ">=1.0.0"
   }
 }
