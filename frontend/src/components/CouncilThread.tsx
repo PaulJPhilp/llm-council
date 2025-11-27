@@ -1,15 +1,15 @@
-import { FC, useRef, useEffect } from "react";
+import { type FC, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Conversation, AssistantMessage, UserMessage } from "../types";
+import type { AssistantMessage, Conversation, UserMessage } from "../types";
 import Stage1Enhanced from "./Stage1Enhanced";
 import Stage2Enhanced from "./Stage2Enhanced";
 import Stage3Enhanced from "./Stage3Enhanced";
 import "./ChatInterface.css";
 
-interface CouncilThreadProps {
+type CouncilThreadProps = {
   conversation?: Conversation;
   isLoading?: boolean;
-}
+};
 
 // Extended message type to include loading states
 interface ExtendedMessage extends AssistantMessage {
@@ -30,7 +30,7 @@ const CouncilThread: FC<CouncilThreadProps> = ({ conversation, isLoading }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages.length]);
+  }, []);
 
   if (!conversation) {
     return (
@@ -52,7 +52,7 @@ const CouncilThread: FC<CouncilThreadProps> = ({ conversation, isLoading }) => {
         </div>
       ) : (
         conversation.messages.map((msg, index) => (
-          <div key={index} className="message-group">
+          <div className="message-group" key={index}>
             {msg.role === "user" ? (
               <div className="user-message">
                 <div className="message-label">You</div>
@@ -71,7 +71,7 @@ const CouncilThread: FC<CouncilThreadProps> = ({ conversation, isLoading }) => {
                 {/* Stage 1 */}
                 {(msg as ExtendedMessage).loading?.stage1 && (
                   <div className="stage-loading">
-                    <div className="spinner"></div>
+                    <div className="spinner" />
                     <span>
                       Running Stage 1: Collecting individual responses...
                     </span>
@@ -84,34 +84,31 @@ const CouncilThread: FC<CouncilThreadProps> = ({ conversation, isLoading }) => {
                 {/* Stage 2 */}
                 {(msg as ExtendedMessage).loading?.stage2 && (
                   <div className="stage-loading">
-                    <div className="spinner"></div>
+                    <div className="spinner" />
                     <span>Running Stage 2: Peer rankings...</span>
                   </div>
                 )}
                 {(msg as ExtendedMessage).stage2 && (
                   <Stage2Enhanced
-                    rankings={(msg as ExtendedMessage).stage2}
+                    aggregateRankings={
+                      (msg as ExtendedMessage).metadata?.aggregate_rankings
+                    }
                     labelToModel={
                       (msg as ExtendedMessage).metadata?.label_to_model
                     }
-                    aggregateRankings={
-                      (msg as ExtendedMessage).metadata
-                        ?.aggregate_rankings
-                    }
+                    rankings={(msg as ExtendedMessage).stage2}
                   />
                 )}
 
                 {/* Stage 3 */}
                 {(msg as ExtendedMessage).loading?.stage3 && (
                   <div className="stage-loading">
-                    <div className="spinner"></div>
+                    <div className="spinner" />
                     <span>Running Stage 3: Final synthesis...</span>
                   </div>
                 )}
                 {(msg as ExtendedMessage).stage3 && (
-                  <Stage3Enhanced
-                    stage3={(msg as ExtendedMessage).stage3}
-                  />
+                  <Stage3Enhanced stage3={(msg as ExtendedMessage).stage3} />
                 )}
               </div>
             )}
@@ -121,7 +118,7 @@ const CouncilThread: FC<CouncilThreadProps> = ({ conversation, isLoading }) => {
 
       {isLoading && (
         <div className="loading-indicator">
-          <div className="spinner"></div>
+          <div className="spinner" />
           <span>Consulting the council...</span>
         </div>
       )}

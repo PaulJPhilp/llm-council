@@ -9,10 +9,13 @@ export class AppConfig extends Effect.Service<AppConfig>()("AppConfig", {
   sync: () => ({
     // OpenRouter API configuration
     openRouterApiKey: Config.string("OPENROUTER_API_KEY").pipe(
-      Config.mapError((error) => new ConfigError({
-        key: "OPENROUTER_API_KEY",
-        message: "OpenRouter API key is required"
-      }))
+      Config.mapError(
+        (_error) =>
+          new ConfigError({
+            key: "OPENROUTER_API_KEY",
+            message: "OpenRouter API key is required",
+          })
+      )
     ),
 
     openRouterApiUrl: Config.string("OPENROUTER_API_URL").pipe(
@@ -39,9 +42,7 @@ export class AppConfig extends Effect.Service<AppConfig>()("AppConfig", {
     ),
 
     // Server configuration
-    port: Config.number("PORT").pipe(
-      Config.withDefault(8001)
-    ),
+    port: Config.number("PORT").pipe(Config.withDefault(8001)),
 
     // Request timeouts (in milliseconds)
     apiTimeoutMs: Config.number("API_TIMEOUT_MS").pipe(
@@ -52,4 +53,4 @@ export class AppConfig extends Effect.Service<AppConfig>()("AppConfig", {
       Config.withDefault(30_000) // 30 seconds
     ),
   }),
-}) { }
+}) {}

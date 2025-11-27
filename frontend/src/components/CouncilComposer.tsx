@@ -1,11 +1,11 @@
-import { FC, useState } from "react";
+import { type FC, useState } from "react";
 import "./ChatInterface.css";
 
-interface CouncilComposerProps {
+type CouncilComposerProps = {
   onSendMessage: (content: string) => void;
   isDisabled?: boolean;
   showComposer?: boolean;
-}
+};
 
 /**
  * Council-optimized input composer component
@@ -43,17 +43,17 @@ const CouncilComposer: FC<CouncilComposerProps> = ({
     <form className="input-form" onSubmit={handleSubmit}>
       <textarea
         className="message-input"
-        placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-        value={input}
+        disabled={isDisabled}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        disabled={isDisabled}
+        placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
         rows={3}
+        value={input}
       />
       <button
-        type="submit"
         className="send-button"
         disabled={!input.trim() || isDisabled}
+        type="submit"
       >
         Send
       </button>

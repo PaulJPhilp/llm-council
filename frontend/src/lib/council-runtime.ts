@@ -6,21 +6,15 @@
  */
 
 import { useExternalStoreRuntime } from "@assistant-ui/react";
-import type {
-  AssistantMessage,
-  Conversation,
-  UserMessage,
-} from "../types";
 import { api } from "../api";
+import type { AssistantMessage, Conversation, UserMessage } from "../types";
 import { getMainContent } from "./message-converter";
 
-export interface UseCouncilRuntimeOptions {
+export type UseCouncilRuntimeOptions = {
   conversation: Conversation | null;
-  onConversationChange: (
-    messages: (AssistantMessage | UserMessage)[]
-  ) => void;
+  onConversationChange: (messages: (AssistantMessage | UserMessage)[]) => void;
   onStreamEvent?: (eventType: string, data: unknown) => void;
-}
+};
 
 /**
  * Custom hook for managing council runtime with assistant-ui
@@ -42,15 +36,16 @@ export function useCouncilRuntime({
 
     // Handle new messages from the user
     async onNew(message) {
-      if (!conversation) return;
+      if (!conversation) {
+        return;
+      }
 
       try {
         // Add user message to conversation
         const userMessage: UserMessage = {
           role: "user",
-          content: message.content[0]?.type === "text"
-            ? message.content[0].text
-            : "",
+          content:
+            message.content[0]?.type === "text" ? message.content[0].text : "",
         };
 
         const updatedMessages = [...(conversation.messages || []), userMessage];
@@ -82,11 +77,14 @@ export function useCouncilRuntime({
             const eventData = event as Record<string, unknown>;
             switch (eventType) {
               case "stage1_complete":
-                assistantMessage.stage1 = (eventData.data || []) as typeof assistantMessage.stage1;
+                assistantMessage.stage1 = (eventData.data ||
+                  []) as typeof assistantMessage.stage1;
                 break;
               case "stage2_complete":
-                assistantMessage.stage2 = (eventData.data || []) as typeof assistantMessage.stage2;
-                assistantMessage.metadata = (eventData.metadata || {}) as typeof assistantMessage.metadata;
+                assistantMessage.stage2 = (eventData.data ||
+                  []) as typeof assistantMessage.stage2;
+                assistantMessage.metadata = (eventData.metadata ||
+                  {}) as typeof assistantMessage.metadata;
                 break;
               case "stage3_complete":
                 assistantMessage.stage3 = (eventData.data || {

@@ -1,6 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { randomUUID } from "node:crypto";
 import {
   calculateAggregateRankings,
   generateConversationTitle,
@@ -10,9 +10,14 @@ import {
   stage3SynthesizeFinal,
 } from "./council";
 import {
-  addAssistantMessage, addUserMessage, createConversation,
+  addAssistantMessage,
+  addUserMessage,
+  type Conversation,
+  type ConversationMetadata,
+  createConversation,
   getConversation,
-  listConversations, updateConversationTitle, type Conversation, type ConversationMetadata
+  listConversations,
+  updateConversationTitle,
 } from "./storage";
 
 // Initialize Hono app
@@ -64,7 +69,9 @@ app.post("/api/conversations", async (c) => {
 app.get("/api/conversations/:conversationId", async (c) => {
   try {
     const conversationId = c.req.param("conversationId");
-    const conversation = getConversation(conversationId) as Conversation | undefined;
+    const conversation = getConversation(conversationId) as
+      | Conversation
+      | undefined;
 
     if (!conversation) {
       return c.json({ error: "Conversation not found" }, { status: 404 });
@@ -180,7 +187,10 @@ app.post("/api/conversations/:conversationId/message/stream", async (c) => {
           controller.enqueue(
             `data: ${JSON.stringify({ type: "stage2_start" })}\n\n`
           );
-          const [stage2Results, labelToModel] = stage2CollectRankings(content, stage1Results) as [any[], any];
+          const [stage2Results, labelToModel] = stage2CollectRankings(
+            content,
+            stage1Results
+          ) as [any[], any];
           const aggregateRankings = calculateAggregateRankings(
             stage2Results,
             labelToModel
@@ -200,7 +210,11 @@ app.post("/api/conversations/:conversationId/message/stream", async (c) => {
           controller.enqueue(
             `data: ${JSON.stringify({ type: "stage3_start" })}\n\n`
           );
-          const stage3Result = stage3SynthesizeFinal(content, stage1Results, stage2Results) as any;
+          const stage3Result = stage3SynthesizeFinal(
+            content,
+            stage1Results,
+            stage2Results
+          ) as any;
           controller.enqueue(
             `data: ${JSON.stringify({
               type: "stage3_complete",
@@ -267,7 +281,7 @@ export default app;
 
 // Start server if running directly
 if (typeof Bun !== "undefined" && Bun.serve) {
-  const port = parseInt(process.env.PORT || "8001");
+  const port = Number.parseInt(process.env.PORT || "8001", 10);
   console.log(`Server running on http://0.0.0.0:${port}`);
   Bun.serve({
     port,

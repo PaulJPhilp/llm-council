@@ -4,12 +4,12 @@
 
 import type {
   AssistantMessage,
-  UserMessage,
+  CouncilMetadata,
   Message,
   Stage1Response,
   Stage2Ranking,
   Stage3Response,
-  CouncilMetadata,
+  UserMessage,
 } from "../types";
 
 /** Extended message type that includes UI state */
@@ -25,9 +25,7 @@ export type UIMessage = Message & {
  * Convert an assistant message to a display-friendly format
  * Extracts key information for UI rendering
  */
-export function messageToDisplayFormat(
-  message: UIMessage
-): {
+export function messageToDisplayFormat(message: UIMessage): {
   role: string;
   isUser: boolean;
   userContent?: string;
@@ -46,7 +44,9 @@ export function messageToDisplayFormat(
     };
   }
 
-  const assistantMsg = msg as AssistantMessage & { loading?: Record<string, boolean> };
+  const assistantMsg = msg as AssistantMessage & {
+    loading?: Record<string, boolean>;
+  };
   return {
     role: "assistant",
     isUser: false,
@@ -54,7 +54,11 @@ export function messageToDisplayFormat(
     stage2: assistantMsg.stage2,
     stage3: assistantMsg.stage3,
     metadata: assistantMsg.metadata,
-    loading: assistantMsg.loading as { stage1: boolean; stage2: boolean; stage3: boolean },
+    loading: assistantMsg.loading as {
+      stage1: boolean;
+      stage2: boolean;
+      stage3: boolean;
+    },
   };
 }
 
@@ -76,7 +80,9 @@ export function getMainContent(message: Message): string {
  * Check if all stages are complete for an assistant message
  */
 export function isMessageComplete(message: Message): boolean {
-  if (message.role === "user") return true;
+  if (message.role === "user") {
+    return true;
+  }
 
   const assistantMsg = message as AssistantMessage;
   return !!(
@@ -91,10 +97,14 @@ export function isMessageComplete(message: Message): boolean {
  * Check if any stages are loading
  */
 export function isMessageLoading(message: Message): boolean {
-  if (message.role === "user") return false;
+  if (message.role === "user") {
+    return false;
+  }
 
   const msg = message as UIMessage;
-  if (!msg.loading) return false;
+  if (!msg.loading) {
+    return false;
+  }
 
   return msg.loading.stage1 || msg.loading.stage2 || msg.loading.stage3;
 }

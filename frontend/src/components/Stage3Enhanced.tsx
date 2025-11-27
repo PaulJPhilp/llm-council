@@ -1,11 +1,11 @@
-import { FC } from "react";
+import type { FC } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Stage3Response } from "../types";
 import "./Stage2.css";
 
-interface Stage3EnhancedProps {
+type Stage3EnhancedProps = {
   stage3?: Stage3Response;
-}
+};
 
 /**
  * Enhanced Stage 3 component with improved accessibility
@@ -17,13 +17,18 @@ const Stage3Enhanced: FC<Stage3EnhancedProps> = ({ stage3 }) => {
   }
 
   return (
-    <div className="stage stage3" role="region" aria-label="Stage 3: Final Synthesis">
+    <div
+      aria-label="Stage 3: Final Synthesis"
+      className="stage stage3"
+      role="region"
+    >
       <h3 className="stage-title">Stage 3: Final Synthesis</h3>
 
       <div className="stage-intro">
         <h4>Chairman's Response</h4>
         <p className="stage-description">
-          Based on all individual responses and peer evaluations, the chairman model synthesizes a final answer.
+          Based on all individual responses and peer evaluations, the chairman
+          model synthesizes a final answer.
         </p>
       </div>
 

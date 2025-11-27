@@ -1,14 +1,14 @@
-import { FC } from "react";
+import type { FC } from "react";
 import type { Conversation } from "../types";
-import CouncilThread from "./CouncilThread";
 import CouncilComposer from "./CouncilComposer";
+import CouncilThread from "./CouncilThread";
 import "./ChatInterface.css";
 
-interface ChatInterfaceProps {
+type ChatInterfaceProps = {
   conversation?: Conversation;
   onSendMessage: (content: string) => void;
   isLoading: boolean;
-}
+};
 
 /**
  * Main chat interface component
@@ -27,8 +27,8 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     <div className="chat-interface">
       <CouncilThread conversation={conversation} isLoading={isLoading} />
       <CouncilComposer
-        onSendMessage={onSendMessage}
         isDisabled={isLoading}
+        onSendMessage={onSendMessage}
         showComposer={showComposer}
       />
     </div>

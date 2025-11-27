@@ -1,11 +1,11 @@
-import { useState, FC } from "react";
+import { type FC, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Stage1Response } from "../types";
 import "./Stage1.css";
 
-interface Stage1EnhancedProps {
+type Stage1EnhancedProps = {
   responses?: Stage1Response[];
-}
+};
 
 /**
  * Enhanced Stage 1 component with improved accessibility and UX
@@ -21,7 +21,11 @@ const Stage1Enhanced: FC<Stage1EnhancedProps> = ({ responses }) => {
   const currentResponse = responses[activeTab];
 
   return (
-    <div className="stage stage1" role="region" aria-label="Stage 1: Individual Responses">
+    <div
+      aria-label="Stage 1: Individual Responses"
+      className="stage stage1"
+      role="region"
+    >
       <h3 className="stage-title">Stage 1: Individual Responses</h3>
       <p className="stage-description">
         Each council member provided their initial response to the question:
@@ -29,18 +33,18 @@ const Stage1Enhanced: FC<Stage1EnhancedProps> = ({ responses }) => {
 
       {/* Tabs */}
       <div
+        aria-label="Council member responses"
         className="tabs"
         role="tablist"
-        aria-label="Council member responses"
       >
         {responses.map((resp, index) => (
           <button
-            key={index}
-            role="tab"
-            aria-selected={activeTab === index}
             aria-controls={`stage1-panel-${index}`}
+            aria-selected={activeTab === index}
             className={`tab ${activeTab === index ? "active" : ""}`}
+            key={index}
             onClick={() => setActiveTab(index)}
+            role="tab"
           >
             {resp.model.split("/")[1] || resp.model}
           </button>
@@ -49,10 +53,10 @@ const Stage1Enhanced: FC<Stage1EnhancedProps> = ({ responses }) => {
 
       {/* Tab Content */}
       <div
-        id={`stage1-panel-${activeTab}`}
-        role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
         className="tab-content"
+        id={`stage1-panel-${activeTab}`}
+        role="tabpanel"
       >
         <div className="model-info">
           <span className="model-name" title={currentResponse.model}>

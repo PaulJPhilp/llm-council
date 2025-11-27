@@ -3,9 +3,9 @@ import ReactMarkdown from "react-markdown";
 import type { Stage1Response } from "../types";
 import "./Stage1.css";
 
-interface Stage1Props {
+type Stage1Props = {
   responses?: Stage1Response[];
-}
+};
 
 export default function Stage1({ responses }: Stage1Props) {
   const [activeTab, setActiveTab] = useState(0);
@@ -21,8 +21,8 @@ export default function Stage1({ responses }: Stage1Props) {
       <div className="tabs">
         {responses.map((resp, index) => (
           <button
-            key={index}
             className={`tab ${activeTab === index ? "active" : ""}`}
+            key={index}
             onClick={() => setActiveTab(index)}
           >
             {resp.model.split("/")[1] || resp.model}

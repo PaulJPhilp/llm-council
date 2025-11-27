@@ -1,31 +1,27 @@
-import { useState, FC } from "react";
+import { type FC, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type {
-  Stage2Ranking,
   AggregateRanking,
   LabelToModelMap,
+  Stage2Ranking,
 } from "../types";
 import "./Stage2.css";
 
-interface Stage2EnhancedProps {
+type Stage2EnhancedProps = {
   rankings?: Stage2Ranking[];
   labelToModel?: LabelToModelMap;
   aggregateRankings?: AggregateRanking[];
-}
+};
 
-function deAnonymizeText(
-  text: string,
-  labelToModel?: LabelToModelMap
-): string {
-  if (!labelToModel) return text;
+function deAnonymizeText(text: string, labelToModel?: LabelToModelMap): string {
+  if (!labelToModel) {
+    return text;
+  }
 
   let result = text;
   Object.entries(labelToModel).forEach(([label, model]) => {
     const modelShortName = model.split("/")[1] || model;
-    result = result.replace(
-      new RegExp(label, "g"),
-      `**${modelShortName}**`
-    );
+    result = result.replace(new RegExp(label, "g"), `**${modelShortName}**`);
   });
   return result;
 }
@@ -48,31 +44,33 @@ const Stage2Enhanced: FC<Stage2EnhancedProps> = ({
   const currentRanking = rankings[activeTab];
 
   return (
-    <div className="stage stage2" role="region" aria-label="Stage 2: Peer Rankings">
+    <div
+      aria-label="Stage 2: Peer Rankings"
+      className="stage stage2"
+      role="region"
+    >
       <h3 className="stage-title">Stage 2: Peer Rankings</h3>
 
       <div className="stage-intro">
         <h4>Raw Evaluations</h4>
         <p className="stage-description">
-          Each model evaluated all responses (anonymized as Response A, B, C, etc.) and provided rankings.
-          Below, model names are shown in <strong>bold</strong> for readability, but the original evaluation used anonymous labels.
+          Each model evaluated all responses (anonymized as Response A, B, C,
+          etc.) and provided rankings. Below, model names are shown in{" "}
+          <strong>bold</strong> for readability, but the original evaluation
+          used anonymous labels.
         </p>
       </div>
 
       {/* Tabs */}
-      <div
-        className="tabs"
-        role="tablist"
-        aria-label="Evaluator responses"
-      >
+      <div aria-label="Evaluator responses" className="tabs" role="tablist">
         {rankings.map((rank, index) => (
           <button
-            key={index}
-            role="tab"
-            aria-selected={activeTab === index}
             aria-controls={`stage2-panel-${index}`}
+            aria-selected={activeTab === index}
             className={`tab ${activeTab === index ? "active" : ""}`}
+            key={index}
             onClick={() => setActiveTab(index)}
+            role="tab"
           >
             {rank.model.split("/")[1] || rank.model}
           </button>
@@ -81,10 +79,10 @@ const Stage2Enhanced: FC<Stage2EnhancedProps> = ({
 
       {/* Tab Content */}
       <div
-        id={`stage2-panel-${activeTab}`}
-        role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
         className="tab-content"
+        id={`stage2-panel-${activeTab}`}
+        role="tabpanel"
       >
         <div className="model-info">
           <span className="ranking-model" title={currentRanking.model}>
@@ -109,9 +107,9 @@ const Stage2Enhanced: FC<Stage2EnhancedProps> = ({
               <h4>Extracted Ranking</h4>
               <ol className="parsed-ranking">
                 {currentRanking.parsed_ranking.map((label, i) => (
-                  <li key={i} className="ranking-item">
+                  <li className="ranking-item" key={i}>
                     <span className="rank-label">
-                      {labelToModel && labelToModel[label]
+                      {labelToModel?.[label]
                         ? labelToModel[label].split("/")[1] ||
                           labelToModel[label]
                         : label}
@@ -127,22 +125,19 @@ const Stage2Enhanced: FC<Stage2EnhancedProps> = ({
       {/* Aggregate Rankings */}
       {aggregateRankings && aggregateRankings.length > 0 && (
         <div
+          aria-label="Aggregate Rankings"
           className="aggregate-rankings"
           role="region"
-          aria-label="Aggregate Rankings"
         >
           <h4>Aggregate Rankings (Street Cred)</h4>
           <p className="stage-description">
-            Combined results across all peer evaluations (lower average rank is better):
+            Combined results across all peer evaluations (lower average rank is
+            better):
           </p>
 
           <div className="aggregate-list">
             {aggregateRankings.map((agg, index) => (
-              <div
-                key={index}
-                className="aggregate-item"
-                role="listitem"
-              >
+              <div className="aggregate-item" key={index} role="listitem">
                 <div className="rank-badge">#{index + 1}</div>
                 <div className="rank-details">
                   <div className="rank-model">

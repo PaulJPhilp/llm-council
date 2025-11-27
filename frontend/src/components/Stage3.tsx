@@ -2,9 +2,9 @@ import ReactMarkdown from "react-markdown";
 import type { Stage3Response } from "../types";
 import "./Stage3.css";
 
-interface Stage3Props {
+type Stage3Props = {
   finalResponse?: Stage3Response;
-}
+};
 
 export default function Stage3({ finalResponse }: Stage3Props) {
   if (!finalResponse) {

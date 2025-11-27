@@ -1,11 +1,11 @@
-import { useState, useEffect, FC } from "react";
-import Sidebar from "./components/Sidebar";
-import ChatInterface from "./components/ChatInterface";
+import { type FC, useEffect, useState } from "react";
 import { api } from "./api";
+import ChatInterface from "./components/ChatInterface";
+import Sidebar from "./components/Sidebar";
 import type { Conversation, ConversationMetadata, StreamEvent } from "./types";
 import "./App.css";
 
-interface ExtendedMessage {
+type ExtendedMessage = {
   role: string;
   content?: string;
   stage1?: unknown;
@@ -17,25 +17,31 @@ interface ExtendedMessage {
     stage2: boolean;
     stage3: boolean;
   };
-}
+};
 
 const App: FC = () => {
-  const [conversations, setConversations] = useState<ConversationMetadata[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [currentConversation, setCurrentConversation] = useState<(Conversation & { messages: ExtendedMessage[] }) | null>(null);
+  const [conversations, setConversations] = useState<ConversationMetadata[]>(
+    []
+  );
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
+  const [currentConversation, setCurrentConversation] = useState<
+    (Conversation & { messages: ExtendedMessage[] }) | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [loadConversations]);
 
   // Load conversation details when selected
   useEffect(() => {
     if (currentConversationId) {
       loadConversation(currentConversationId);
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, loadConversation]);
 
   const loadConversations = async () => {
     try {
@@ -49,7 +55,9 @@ const App: FC = () => {
   const loadConversation = async (id: string) => {
     try {
       const conv = await api.getConversation(id);
-      setCurrentConversation(conv as (Conversation & { messages: ExtendedMessage[] }));
+      setCurrentConversation(
+        conv as Conversation & { messages: ExtendedMessage[] }
+      );
     } catch (error) {
       console.error("Failed to load conversation:", error);
     }
@@ -78,14 +86,18 @@ const App: FC = () => {
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!currentConversationId || !currentConversation) return;
+    if (!(currentConversationId && currentConversation)) {
+      return;
+    }
 
     setIsLoading(true);
     try {
       // Optimistically add user message to UI
       const userMessage: ExtendedMessage = { role: "user", content };
       setCurrentConversation((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         return {
           ...prev,
           messages: [...prev.messages, userMessage],
@@ -108,7 +120,9 @@ const App: FC = () => {
 
       // Add the partial assistant message
       setCurrentConversation((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         return {
           ...prev,
           messages: [...prev.messages, assistantMessage],
@@ -123,9 +137,11 @@ const App: FC = () => {
           switch (eventType) {
             case "stage1_start":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 if (lastMsg.loading) {
                   lastMsg.loading.stage1 = true;
                 }
@@ -135,9 +151,11 @@ const App: FC = () => {
 
             case "stage1_complete":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 lastMsg.stage1 = event.data;
                 if (lastMsg.loading) {
                   lastMsg.loading.stage1 = false;
@@ -148,9 +166,11 @@ const App: FC = () => {
 
             case "stage2_start":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 if (lastMsg.loading) {
                   lastMsg.loading.stage2 = true;
                 }
@@ -160,9 +180,11 @@ const App: FC = () => {
 
             case "stage2_complete":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 lastMsg.stage2 = event.data;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 lastMsg.metadata = (event as any).metadata;
@@ -175,9 +197,11 @@ const App: FC = () => {
 
             case "stage3_start":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 if (lastMsg.loading) {
                   lastMsg.loading.stage3 = true;
                 }
@@ -187,9 +211,11 @@ const App: FC = () => {
 
             case "stage3_complete":
               setCurrentConversation((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                  return prev;
+                }
                 const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
+                const lastMsg = messages.at(-1);
                 lastMsg.stage3 = event.data;
                 if (lastMsg.loading) {
                   lastMsg.loading.stage3 = false;
@@ -223,7 +249,9 @@ const App: FC = () => {
       console.error("Failed to send message:", error);
       // Remove optimistic messages on error
       setCurrentConversation((prev) => {
-        if (!prev) return prev;
+        if (!prev) {
+          return prev;
+        }
         return {
           ...prev,
           messages: prev.messages.slice(0, -2),
@@ -238,13 +266,13 @@ const App: FC = () => {
       <Sidebar
         conversations={conversations}
         currentConversationId={currentConversationId || undefined}
-        onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onSelectConversation={handleSelectConversation}
       />
       <ChatInterface
         conversation={currentConversation as Conversation | undefined}
-        onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        onSendMessage={handleSendMessage}
       />
     </div>
   );
