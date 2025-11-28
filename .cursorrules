@@ -1,0 +1,1909 @@
+# Effect-TS Patterns - Coding Rules for Claude Code
+
+This file contains auto-generated coding rules from Effect-TS patterns and project-specific guidance for the LLM Council repository.
+
+---
+
+# Part 1: Effect-TS Pattern Rules
+
+Generated from 130+ published patterns. These rules provide best practices for working with Effect-TS.
+
+## 🟢 Beginner Patterns
+
+### Accumulate Multiple Errors with Either
+
+**Rule:** Use Either to model computations that may fail, making errors explicit and type-safe.
+
+**Use Cases:** Data Types, Error Handling, Domain Modeling
+
+- `Either.right(value)` represents success
+- `Either.left(error)` represents failure
+- Pattern match with `Either.match` to handle both cases
+- Combine multiple Eithers and accumulate errors with `Either.all`
+
+**Anti-Pattern:** Throwing exceptions or using ad-hoc error codes, which are not type-safe or composable.
+
+---
+
+### Chaining Computations with flatMap
+
+**Rule:** Use flatMap to sequence computations, flattening nested structures and preserving error/context handling.
+
+**Use Cases:** Combinators, Composition, Sequencing
+
+- `flatMap` is the key to sequencing dependent steps
+- Flattens nested structures (no `Option<Option<A>>` or `Effect<Effect<A>>`)
+- Ensures errors and context are handled automatically
+- Works across Effect, Option, Either, and Stream
+
+**Anti-Pattern:** Manually unwrapping values with `.getOrElse` or `.unsafeRunSync`, which breaks composability.
+
+---
+
+### Checking Option and Either Cases
+
+**Rule:** Use isSome, isNone, isLeft, and isRight for simple, type-safe conditional logic.
+
+**Use Cases:** Pattern Matching, Option, Either, Branching, Checks
+
+- `Option.isSome()` and `Option.isNone()` for Option checks
+- `Either.isRight()` and `Either.isLeft()` for Either checks
+- Useful for filtering collections
+- Type guards for conditional logic
+
+**Anti-Pattern:** Manual property checks like `option._tag === "Some"` or unsafe type assertions.
+
+---
+
+### Collect All Results into a List
+
+**Rule:** Use Stream.runCollect to execute a stream and collect all emitted values into a Chunk.
+
+**Use Cases:** Building Data Pipelines
+
+- `Stream.runCollect` is the fundamental sink
+- Returns an `Effect` that yields a `Chunk` with all results
+- Only use for bounded/finite streams
+- For unbounded streams, use `Stream.runDrain` instead
+
+**Anti-Pattern:** Using `Stream.runCollect` on infinite or extremely large streams, causing out-of-memory errors.
+
+---
+
+### Combining Values with zip
+
+**Rule:** Use zip to run two computations and combine their results into a tuple.
+
+**Use Cases:** Combinators, Composition, Pairing
+
+- `zip` runs independent computations in parallel
+- Pairs results into a tuple
+- Preserves error handling and context
+- If either fails, the entire zip fails
+
+**Anti-Pattern:** Manually running computations and pairing results outside the combinator world.
+
+---
+
+### Comparing Data by Value
+
+**Rule:** Use Data.struct to define objects whose equality is based on contents, enabling value-based comparison.
+
+**Use Cases:** Data Types, Structural Equality, Domain Modeling
+
+- `Data.struct` creates immutable objects with value-based equality
+- Use `Equal.equals()` for comparison
+- Perfect for domain entities and value objects
+- Works with HashSet and Map
+
+**Anti-Pattern:** Using plain JavaScript objects for value-based logic, which compares by reference.
+
+---
+
+### Conditional Branching with if, when, and cond
+
+**Rule:** Use combinators like if, when, and cond for declarative branching without imperative if statements.
+
+**Use Cases:** Combinators, Composition, Conditional Logic
+
+- `Effect.if` branches based on conditions without leaving Effect world
+- `Effect.when` and `Effect.unless` run effects conditionally
+- Maintains composability and type safety
+- Preserves error handling
+
+**Anti-Pattern:** Using imperative `if` statements to decide which effect to return, breaking composability.
+
+---
+
+### Converting from Nullable, Option, or Either
+
+**Rule:** Use fromNullable, fromOption, and fromEither to lift values for safe interop.
+
+**Use Cases:** Constructors, Interop, Conversion
+
+- `Option.fromNullable()` converts nullable to Option
+- `Effect.fromOption()` converts Option to Effect that may fail
+- `Effect.fromEither()` converts Either to Effect
+- Eliminates null/undefined pitfalls
+
+**Anti-Pattern:** Passing around `null`/`undefined` without converting, which loses type safety.
+
+---
+
+### Create a Basic HTTP Server
+
+**Rule:** Use Http.server.serve with a platform-specific layer to run an HTTP application.
+
+**Use Cases:** Building APIs
+
+- `Http.server.serve(app)` creates a managed server Effect
+- Compose with platform layers like `NodeHttpServer.layer()`
+- Server lifecycle is managed by Effect runtime
+- Structured concurrency ensures graceful shutdown
+
+**Anti-Pattern:** Creating HTTP server outside Effect runtime, missing integration with dependency injection.
+
+---
+
+### Create a Stream from a List
+
+**Rule:** Use Stream.fromIterable to begin a pipeline from an in-memory collection.
+
+**Use Cases:** Building Data Pipelines
+
+- `Stream.fromIterable()` bridges arrays to lazy streams
+- Essential for data pipeline entry points
+- Transform collections with composable operators
+- Perfect for testing pipelines with mock data
+
+**Anti-Pattern:** Eagerly processing entire collections with Array methods instead of lazy streaming.
+
+---
+
+### Create Pre-resolved Effects with succeed and fail
+
+**Rule:** Create pre-resolved effects with succeed and fail.
+
+**Use Cases:** Core Concepts
+
+- `Effect.succeed(value)` for immediate success
+- `Effect.fail(error)` for immediate failure
+- Essential for functions that must return an Effect
+- Use within gen blocks or pipe compositions
+
+**Anti-Pattern:** Wrapping static values in `Effect.sync` instead of using `Effect.succeed`.
+
+---
+
+### Creating from Collections
+
+**Rule:** Use fromIterable and fromArray to lift collections into Streams or Effects.
+
+**Use Cases:** Constructors, Collections, Streams, Batch Processing
+
+- `Stream.fromIterable()` creates lazy stream from any iterable
+- `Effect.all()` processes arrays of effects
+- Enables composable transformations
+- Supports both streaming and batch operations
+
+**Anti-Pattern:** Manually looping over collections instead of using streaming operators.
+
+---
+
+### Creating from Synchronous and Callback Code
+
+**Rule:** Use sync and async to create Effects from synchronous or callback-based computations.
+
+**Use Cases:** Constructors, Interop, Async, Callback
+
+- `Effect.sync()` for pure synchronous operations
+- `Effect.async()` for callback-based APIs
+- Integrates legacy code into Effect ecosystem
+- Preserves error handling and composability
+
+**Anti-Pattern:** Directly calling synchronous/callback APIs without lifting, breaking composability.
+
+---
+
+### Execute Asynchronous Effects with Effect.runPromise
+
+**Rule:** Execute asynchronous effects with Effect.runPromise.
+
+**Use Cases:** Project Setup & Execution
+
+- `Effect.runPromise()` bridges Effect to Promise world
+- If succeeds, Promise resolves; if fails, Promise rejects
+- Standard way to launch applications
+- Use for top-level application startup
+
+**Anti-Pattern:** Calling `runPromise` inside another Effect composition, breaking declarative structure.
+
+---
+
+### Execute Synchronous Effects with Effect.runSync
+
+**Rule:** Execute synchronous effects with Effect.runSync.
+
+**Use Cases:** Project Setup & Execution
+
+- `Effect.runSync()` optimized for Effects without async operations
+- Throws error if Effect contains async operations
+- Use for CLI tools and synchronous initialization
+- More efficient than `runPromise` for pure computations
+
+**Anti-Pattern:** Using `Effect.runSync` on Effects with async operations like `Effect.delay` or `Effect.promise`.
+
+---
+
+### Filtering Results with filter
+
+**Rule:** Use filter to declaratively express conditional logic, keeping only values that satisfy a predicate.
+
+**Use Cases:** Combinators, Composition, Conditional Logic
+
+- `filter` applies predicate and continues or fails based on result
+- Works across Effect, Option, Either, and Stream
+- Type-safe filtering without manual checks
+- Essential for data pipelines
+
+**Anti-Pattern:** Using `map` with conditional that returns Option/Either, then manually flattening.
+
+---
+
+### Handle a GET Request
+
+**Rule:** Use Http.router.get to associate a URL path with a specific response Effect.
+
+**Use Cases:** Building APIs
+
+- `Http.router.get(path, handler)` maps URL to handler
+- Handlers return `Effect<Response>`
+- Router handles routing logic declaratively
+- Automatically returns 404 for unmatched paths
+
+**Anti-Pattern:** Single monolithic handler with conditional logic to inspect URL strings.
+
+---
+
+### Lifting Errors and Absence with fail, none, and left
+
+**Rule:** Use fail, none, and left to create computations that represent failure or absence.
+
+**Use Cases:** Constructors, Lifting, Error Handling, Absence
+
+- `Effect.fail(error)` represents expected failure
+- `Option.none()` represents absence of value
+- `Either.left(error)` represents failure
+- Enables declarative handling of error cases
+
+**Anti-Pattern:** Throwing exceptions, returning null/undefined, or using error codes outside Effect/Option/Either.
+
+---
+
+### Lifting Values with succeed, some, and right
+
+**Rule:** Use succeed, some, and right to create Effects, Options, or Eithers from plain values.
+
+**Use Cases:** Constructors, Lifting, Composition
+
+- `Effect.succeed(value)` for immediate success
+- `Option.some(value)` for present values
+- `Either.right(value)` for successful results
+- Enables composition with other structures
+
+**Anti-Pattern:** Passing plain values around outside Effect/Option/Either world.
+
+---
+
+### Matching on Success and Failure with match
+
+**Rule:** Use match to pattern match on results of Effect, Option, or Either.
+
+**Use Cases:** Pattern Matching, Error Handling, Branching
+
+- `match` handles all possible outcomes exhaustively
+- Ensures all cases are considered
+- Type-safe branching
+- Avoids scattered if/else statements
+
+**Anti-Pattern:** Using nested if/else or ignoring possible error/none/left cases.
+
+---
+
+### Model Optional Values Safely with Option
+
+**Rule:** Use Option to model values that may be present or absent, making absence explicit.
+
+**Use Cases:** Data Types, Domain Modeling, Optional Values
+
+- `Option.some(value)` represents present value
+- `Option.none()` represents absence
+- Makes "no value" case impossible to forget
+- Safer than null/undefined
+
+**Anti-Pattern:** Using null/undefined to represent absence, which leads to runtime errors.
+
+---
+
+### Run a Pipeline for its Side Effects
+
+**Rule:** Use Stream.runDrain to execute a stream for its side effects when you don't need final values.
+
+**Use Cases:** Building Data Pipelines
+
+- `Stream.runDrain` processes items without collecting results
+- Memory efficient for large/infinite streams
+- Clarifies intent: side effects, not output collection
+- Perfect for fire-and-forget operations
+
+**Anti-Pattern:** Using `Stream.runCollect` when you only care about side effects, wasting memory.
+
+---
+
+### Safely Bracket Resource Usage with acquireRelease
+
+**Rule:** Bracket resource usage between acquire and release effects.
+
+**Use Cases:** Resource Management, File Handling, Database Connections, Network Requests
+
+- `Effect.acquireRelease(acquire, release)` provides resource safety
+- Guarantees release even if interrupted
+- Better than try...finally in async contexts
+- Composable resource management
+
+**Anti-Pattern:** Using try...finally with async/await, which is not interruption-safe.
+
+---
+
+### Send a JSON Response
+
+**Rule:** Use Http.response.json to automatically serialize data into JSON response.
+
+**Use Cases:** Building APIs
+
+- `Http.response.json(data)` serializes and sets correct headers
+- Automatically sets Content-Type header
+- Handles serialization errors
+- Type-safe response creation
+
+**Anti-Pattern:** Manually serializing with JSON.stringify and setting headers yourself.
+
+---
+
+### Set Up a New Effect Project
+
+**Rule:** Set up a new Effect project with proper TypeScript configuration.
+
+**Use Cases:** Project Setup & Execution
+
+- Install TypeScript, Effect, and necessary dependencies
+- Enable `strict: true` in tsconfig.json
+- Use Bun as package manager
+- Create proper project structure
+
+**Anti-Pattern:** Disabling strict mode or using permissive TypeScript settings.
+
+---
+
+### Solve Promise Problems with Effect
+
+**Rule:** Recognize that Effect solves core Promise limitations: untyped errors, no DI, and no cancellation.
+
+**Use Cases:** Core Concepts
+
+- **Typed Errors:** `E` channel forces handling specific error types
+- **Dependency Injection:** `R` channel provides Layer-based DI
+- **Cancellation:** Structured concurrency with guaranteed cleanup
+- Effect addresses all Promise limitations
+
+**Anti-Pattern:** Relying solely on Promises for complex applications without Effect's guarantees.
+
+---
+
+### Transform Effect Values with map and flatMap
+
+**Rule:** Transform Effect values with map and flatMap.
+
+**Use Cases:** Core Concepts
+
+- `Effect.map` transforms value without changing error/context
+- `Effect.flatMap` chains effects where transformation returns an Effect
+- Enables composable transformations
+- Preserves error handling
+
+**Anti-Pattern:** Using `flatMap` with function that ignores its argument.
+
+---
+
+### Transforming Values with map
+
+**Rule:** Use map to apply pure functions to values inside Effect, Stream, Option, or Either.
+
+**Use Cases:** Combinators, Composition
+
+- Works consistently across Effect, Option, Either, Stream
+- Pure function transformation without changing error channel
+- Composable with pipe operator
+- Type-safe value transformation
+
+**Anti-Pattern:** Manually extracting values, transforming, then re-wrapping.
+
+---
+
+### Understand that Effects are Lazy Blueprints
+
+**Rule:** Understand that effects are lazy blueprints, not eager computations.
+
+**Use Cases:** Core Concepts
+
+- Defining an Effect executes no code
+- Only `runSync`, `runPromise`, etc. execute the effect
+- Makes code composable, predictable, and testable
+- Unlike Promises which execute immediately
+
+**Anti-Pattern:** Assuming an Effect behaves like a Promise and executes immediately.
+
+---
+
+### Understand the Three Effect Channels
+
+**Rule:** Understand Effect<A, E, R>: success type (A), error type (E), and requirements type (R).
+
+**Use Cases:** Core Concepts
+
+- **A:** What it produces on success
+- **E:** Specific errors it can fail with (typed!)
+- **R:** Services/dependencies it requires
+- Fully documents effect contract upfront
+
+**Anti-Pattern:** Ignoring the type system and using generic types everywhere.
+
+---
+
+### Use .pipe for Composition
+
+**Rule:** Use .pipe for composition.
+
+**Use Cases:** Core Concepts
+
+- Makes data transformations readable
+- Avoids deeply nested function calls
+- Clear, linear flow of operations
+- Standard Effect composition pattern
+
+**Anti-Pattern:** Deeply nested function calls or long method chains without pipe.
+
+---
+
+### Working with Immutable Arrays using Data.array
+
+**Rule:** Use Data.array to define arrays with structural equality.
+
+**Use Cases:** Data Types, Arrays, Structural Equality, Collections
+
+- `Data.array` creates immutable arrays with value-based equality
+- Use in HashSet or as map keys
+- Supports functional operations
+- Safer than mutable arrays
+
+**Anti-Pattern:** Using mutable arrays for value-based logic or in concurrent code.
+
+---
+
+### Working with Tuples using Data.tuple
+
+**Rule:** Use Data.tuple to define tuples with value-based equality.
+
+**Use Cases:** Data Types, Tuples, Structural Equality, Domain Modeling
+
+- `Data.tuple` creates immutable tuples with value equality
+- Perfect for pairs, coordinates, fixed-size heterogeneous data
+- Supports safe pattern matching
+- Use in collections
+
+**Anti-Pattern:** Using plain arrays for value-based logic or as map keys.
+
+---
+
+### Wrap Asynchronous Computations with tryPromise
+
+**Rule:** Wrap asynchronous computations with tryPromise.
+
+**Use Cases:** Core Concepts
+
+- `Effect.tryPromise()` bridges Promise world to Effect
+- Safely catches rejections
+- Type-safe error handling
+- Standard integration pattern
+
+**Anti-Pattern:** Using unsafe Promise operations without try/catch.
+
+---
+
+### Wrap Synchronous Computations with sync and try
+
+**Rule:** Wrap synchronous computations with sync and try.
+
+**Use Cases:** Core Concepts
+
+- `Effect.sync()` for safe synchronous code
+- `Effect.try()` for code that may throw
+- Captures exceptions in error channel
+- Enables composition
+
+**Anti-Pattern:** Using `sync` for code that throws (use `try` instead).
+
+---
+
+### Write Sequential Code with Effect.gen
+
+**Rule:** Write sequential code with Effect.gen.
+
+**Use Cases:** Core Concepts
+
+- `Effect.gen` provides flat, linear, readable code structure
+- Avoids nested flatMap chains
+- Looks like async/await syntax
+- Essential for complex workflows
+
+**Anti-Pattern:** Deeply nesting `.flatMap` calls for multi-step logic.
+
+---
+
+## 🟡 Intermediate Patterns
+
+### Access Configuration from the Context
+
+**Rule:** Access configuration from the Effect context.
+
+**Use Cases:** Application Configuration
+
+- Services access config declaratively via Context
+- Decouples business logic from configuration source
+- Enables testing with different configs
+- Type-safe configuration access
+
+**Anti-Pattern:** Passing configuration through function arguments (prop-drilling).
+
+---
+
+### Accessing the Current Time with Clock
+
+**Rule:** Use Clock service for time-based logic, enabling deterministic testing.
+
+**Use Cases:** Modeling Time, Testing
+
+- `Clock.currentTimeMillis` gets current time
+- Default uses system clock in production
+- TestClock for deterministic testing
+- Makes time-dependent logic pure
+
+**Anti-Pattern:** Directly calling `Date.now()`, which makes code impure and untestable.
+
+---
+
+### Accumulate Multiple Errors with Either
+
+**Rule:** Use Either to accumulate multiple validation errors instead of failing on first.
+
+**Use Cases:** Error Management, Domain Modeling
+
+- Combines multiple validation results
+- Collects all errors for user feedback
+- Type-safe error accumulation
+- Better UX than fail-fast approach
+
+**Anti-Pattern:** Using Effect's error channel for validation requiring multiple messages.
+
+---
+
+### Add Custom Metrics to Your Application
+
+**Rule:** Use Metric.counter, Metric.gauge, and Metric.histogram for monitoring.
+
+**Use Cases:** Observability, Making HTTP Requests
+
+- `Metric.counter` for event counts
+- `Metric.gauge` for values that go up/down
+- `Metric.histogram` for distributions
+- Integrated with Effect ecosystem
+
+**Anti-Pattern:** Not adding metrics, flying blind without observability.
+
+---
+
+### Automatically Retry Failed Operations
+
+**Rule:** Compose a Stream with .retry(Schedule) to automatically recover from transient failures.
+
+**Use Cases:** Building Data Pipelines
+
+- `retry` with `Schedule` policies provides resilience
+- Declarative retry strategies
+- Prevents cascading failures
+- Essential for production systems
+
+**Anti-Pattern:** No retry logic at all, or manual, imperative retry loops.
+
+---
+
+### Avoid Long Chains of .andThen; Use Generators Instead
+
+**Rule:** Prefer generators over long chains of .andThen.
+
+**Use Cases:** Domain Modeling
+
+- Generators are flat and readable
+- Easier to debug than chained operations
+- Better mental model for sequential logic
+- Standard Effect pattern
+
+**Anti-Pattern:** Deeply nested `.andThen` or `.flatMap` chains.
+
+---
+
+### Beyond the Date Type - Real World Dates, Times, and Timezones
+
+**Rule:** Use Clock service for testable time-based logic.
+
+**Use Cases:** Modeling Time
+
+- `Clock.currentTimeMillis` for current time
+- Store timestamps as primitives (number/string)
+- `TestClock` for deterministic testing
+- Makes time logic pure
+
+**Anti-Pattern:** Using mutable Date objects, relying on system clock.
+
+---
+
+### Compose Resource Lifecycles with Layer.merge
+
+**Rule:** Compose multiple scoped layers using Layer.merge.
+
+**Use Cases:** Application Architecture, Resource Management, Dependency Injection
+
+- `Layer.merge` combines independent layers
+- Automatic acquisition order based on dependencies
+- Guaranteed reverse LIFO release order
+- Essential for complex applications
+
+**Anti-Pattern:** Manual, imperative startup/shutdown scripts.
+
+---
+
+### Conditionally Branching Workflows
+
+**Rule:** Use predicate-based operators like Effect.filter for declarative branching.
+
+**Use Cases:** Core Concepts, Error Management
+
+- `Effect.filterOrFail` validates and continues or fails
+- Named predicates document business rules
+- Reusable business logic
+- Type-safe branching
+
+**Anti-Pattern:** Inline if statements breaking declarative flow.
+
+---
+
+### Control Flow with Conditional Combinators
+
+**Rule:** Use conditional combinators for control flow.
+
+**Use Cases:** Core Concepts
+
+- `Effect.if` for simple branching
+- `Effect.when` and `Effect.unless` for conditional execution
+- Maintains composability
+- Type-safe branching
+
+**Anti-Pattern:** Breaking composability with manual conditionals.
+
+---
+
+### Control Repetition with Schedule
+
+**Rule:** Use Schedule to create composable policies for controlling repetition.
+
+**Use Cases:** Core Concepts, Error Management, Concurrency
+
+- Declarative repetition and retry policies
+- Composable schedules (exponential, jittered, limited)
+- Stateful schedule tracking
+- Prevents imperative loops
+
+**Anti-Pattern:** Manual retry/repetition logic in loops.
+
+---
+
+### Create a Service Layer from a Managed Resource
+
+**Rule:** Provide a managed resource to the application context using Layer.scoped.
+
+**Use Cases:** Resource Management, Dependency Injection, Application Architecture
+
+- `Layer.scoped` manages resource lifecycle
+- Services depend on abstract interface, not implementation
+- Easy to mock in tests
+- Automatic cleanup
+
+**Anti-Pattern:** Creating service instances directly, tight coupling.
+
+---
+
+### Create a Testable HTTP Client Service
+
+**Rule:** Define HttpClient service with distinct Live and Test layers.
+
+**Use Cases:** Making HTTP Requests, Testing
+
+- Abstract service interface
+- Live layer uses real HTTP
+- Test layer returns mock data
+- Fast, deterministic tests
+
+**Anti-Pattern:** Calling fetch directly, tightly coupled to implementation.
+
+---
+
+### Define a Type-Safe Configuration Schema
+
+**Rule:** Define a type-safe configuration schema.
+
+**Use Cases:** Application Configuration
+
+- Single source of truth for configuration
+- Compile-time and runtime validation
+- Type-safe access
+- Prevents runtime errors
+
+**Anti-Pattern:** Directly accessing process.env, untyped configuration.
+
+---
+
+### Define Contracts Upfront with Schema
+
+**Rule:** Define contracts upfront with schema.
+
+**Use Cases:** Domain Modeling
+
+- "Schema-first" approach separates what from how
+- Single source for compile-time types and runtime validation
+- Clear boundaries between layers
+- Enables refactoring safely
+
+**Anti-Pattern:** Ad-hoc validation logic scattered throughout codebase.
+
+---
+
+### Define Type-Safe Errors with Data.TaggedError
+
+**Rule:** Define type-safe errors with Data.TaggedError.
+
+**Use Cases:** Error Management, Domain Modeling
+
+- Each error has unique, literal `_tag`
+- Type discrimination with `Effect.catchTag`
+- Fully type-safe error handling
+- Self-documenting error cases
+
+**Anti-Pattern:** Generic Error objects or strings in error channel.
+
+---
+
+### Distinguish 'Not Found' from Errors
+
+**Rule:** Use Effect<Option<A>> to distinguish recoverable 'not found' from failures.
+
+**Use Cases:** Error Management, Domain Modeling
+
+- Success with value: `Effect.succeed(Option.some(value))`
+- Success without value: `Effect.succeed(Option.none())`
+- Failure: `Effect.fail(new DatabaseError())`
+- "Not found" as expected business logic, not error
+
+**Anti-Pattern:** Conflating "not found" with actual errors.
+
+---
+
+### Effectful Pattern Matching with matchEffect
+
+**Rule:** Use matchEffect to pattern match with effectful logic for both cases.
+
+**Use Cases:** Pattern Matching, Effectful Branching, Error Handling
+
+- Run different Effects on success or failure
+- Useful for logging, retries, cleanup
+- Keeps code composable
+- Type-safe branching
+
+**Anti-Pattern:** Using match then wrapping results in Effects.
+
+---
+
+### Handle API Errors
+
+**Rule:** Model application errors and map them to specific HTTP responses at server level.
+
+**Use Cases:** Building APIs
+
+- Define typed error classes
+- Centralized error-to-response mapping
+- Consistent API error handling
+- Clear client communication
+
+**Anti-Pattern:** Duplicating error handling across route handlers.
+
+---
+
+### Handle Errors with catchTag, catchTags, and catchAll
+
+**Rule:** Handle errors with catchTag, catchTags, and catchAll.
+
+**Use Cases:** Error Management
+
+- `catchTag` for specific tagged errors
+- `catchTags` for multiple error types
+- `catchAll` as fallback
+- Type-safe, exhaustive error handling
+
+**Anti-Pattern:** Generic `catchAll` for all error types.
+
+---
+
+### Handle Flaky Operations with Retries and Timeouts
+
+**Rule:** Use Effect.retry and Effect.timeout for resilience.
+
+**Use Cases:** Error Management
+
+- `retry` for transient failures
+- `timeout` to prevent hanging
+- Essential for distributed systems
+- Combine for robust operations
+
+**Anti-Pattern:** No resilience logic, failing on first issue.
+
+---
+
+### Handling Errors with catchAll, orElse, and match
+
+**Rule:** Use error handling combinators for recovery.
+
+**Use Cases:** Combinators, Error Handling, Composition
+
+- `catchAll` to recover from any error
+- `orElse` to provide fallback
+- `match` to pattern match on outcome
+- Type-safe, composable error recovery
+
+**Anti-Pattern:** Scattered try/catch blocks throughout code.
+
+---
+
+### Handling Specific Errors with catchTag and catchTags
+
+**Rule:** Use catchTag and catchTags for specific error recovery.
+
+**Use Cases:** Pattern Matching, Error Handling, Tagged Unions
+
+- `catchTag` for single error type
+- `catchTags` for multiple types
+- Targeted recovery logic
+- Unhandled errors propagate
+
+**Anti-Pattern:** Catching all errors when you only handle specific types.
+
+---
+
+### Instrument and Observe Function Calls with Effect.fn
+
+**Rule:** Use Effect.fn to wrap functions with effectful instrumentation.
+
+**Use Cases:** Observability, Instrumentation, Function Calls, Debugging
+
+- Add logging, metrics, tracing without changing core logic
+- Composable instrumentation
+- Separation of concerns
+- Reusable instrumentation
+
+**Anti-Pattern:** Scattering logging/metrics directly in business logic.
+
+---
+
+### Leverage Effect's Built-in Structured Logging
+
+**Rule:** Use Effect.log, Effect.logInfo, Effect.logError for structured logging.
+
+**Use Cases:** Observability, Logging, Debugging
+
+- Structured, context-aware logging
+- Configuration via Layer
+- Testable logging
+- Better observability than console
+
+**Anti-Pattern:** Using console.log throughout code.
+
+---
+
+### Make an Outgoing HTTP Client Request
+
+**Rule:** Use Http.client module to keep operations within Effect ecosystem.
+
+**Use Cases:** Building APIs
+
+- Full Effect integration for outgoing requests
+- Seamless composition with Effects
+- Structured concurrency for cancellation
+- Type-safe error handling
+
+**Anti-Pattern:** Using raw fetch, breaking out of Effect context.
+
+---
+
+### Manage Shared State Safely with Ref
+
+**Rule:** Use Ref to safely manage shared, mutable state concurrently.
+
+**Use Cases:** Core Concepts, Concurrency
+
+- `Ref` is atomic, fiber-safe container
+- All updates are atomic
+- Prevents race conditions
+- Essential for concurrent shared state
+
+**Anti-Pattern:** Using plain variables for shared state in concurrent code.
+
+---
+
+### Mapping and Chaining over Collections with forEach and all
+
+**Rule:** Use forEach and all for type-safe, composable collection processing.
+
+**Use Cases:** Combinators, Collections, Parallelism, Batch Processing
+
+- `forEach` applies function to each item
+- `all` runs multiple effects and collects results
+- Error handling and context propagation automatic
+- Supports concurrency control
+
+**Anti-Pattern:** Manual loops with imperative control flow.
+
+---
+
+### Mapping Errors to Fit Your Domain
+
+**Rule:** Use Effect.mapError to transform errors and create architectural boundaries.
+
+**Use Cases:** Error Management
+
+- Transform low-level errors to domain errors
+- Create clean architectural boundaries
+- Prevents abstraction leaks
+- Decouples layers
+
+**Anti-Pattern:** Exposing internal implementation errors to callers.
+
+---
+
+### Matching Tagged Unions with matchTag and matchTags
+
+**Rule:** Use matchTag and matchTags for safe, exhaustive pattern matching.
+
+**Use Cases:** Pattern Matching, Tagged Unions, Error Handling, Branching
+
+- Exhaustive handling of all cases
+- Type-safe branching
+- Self-documenting code
+- Prevents missing cases
+
+**Anti-Pattern:** Manual instanceof or property checks.
+
+---
+
+### Mocking Dependencies in Tests
+
+**Rule:** Provide mock service implementations via test-specific Layer.
+
+**Use Cases:** Testing
+
+- Mock implementations replace real services
+- Type-safe mocking
+- Deterministic, fast tests
+- Easy service substitution
+
+**Anti-Pattern:** Using real implementations in tests (integration tests).
+
+---
+
+### Model Dependencies as Services
+
+**Rule:** Model dependencies as services for testability and decoupling.
+
+**Use Cases:** Making HTTP Requests, Testing
+
+- Services abstract dependencies
+- Easy to swap implementations
+- Live implementation for production
+- Test implementation for tests
+
+**Anti-Pattern:** Hard-coding dependencies or tight coupling.
+
+---
+
+### Model Optional Values Safely with Option
+
+**Rule:** Use Option<A> to explicitly model values that may be absent.
+
+**Use Cases:** Domain Modeling, Error Management
+
+- `Option.some(value)` for present values
+- `Option.none()` for absence
+- Impossible to forget "no value" case
+- Type-safe absence handling
+
+**Anti-Pattern:** Using null/undefined to represent absence.
+
+---
+
+### Model Validated Domain Types with Brand
+
+**Rule:** Model validated domain types with Brand.
+
+**Use Cases:** Domain Modeling
+
+- Brand adds type-level distinction
+- Move validation to system boundaries
+- Rest of app trusts branded values
+- Type safety
+
+**Anti-Pattern:** "Primitive obsession" with raw primitives everywhere.
+
+---
+
+### Modeling Effect Results with Exit
+
+**Rule:** Use Exit to capture effect outcomes including success, failure, and defects.
+
+**Use Cases:** Data Types, Effect Results, Error Handling, Concurrency
+
+- `Exit.success(value)` for success
+- `Exit.failure(cause)` for failure
+- Distinguishes error from defect
+- Complete effect outcome summary
+
+**Anti-Pattern:** Only checking success/failure without full cause information.
+
+---
+
+### Modeling Tagged Unions with Data.case
+
+**Rule:** Use Data.case for tagged unions enabling exhaustive pattern matching.
+
+**Use Cases:** Data Types, Tagged Unions, ADTs, Domain Modeling
+
+- Define state machines safely
+- Exhaustive pattern matching
+- Type-safe case handling
+- Domain-specific states
+
+**Anti-Pattern:** Using plain objects or enums for domain states.
+
+---
+
+### Modeling Validated Domain Types with Brand
+
+**Rule:** Use Brand to define types ensuring only valid values can be constructed.
+
+**Use Cases:** Branded Types, Domain Modeling, Type Safety
+
+- Distinct from base type
+- Compile-time uniqueness
+- Prevents accidental misuse
+- Domain-specific types
+
+**Anti-Pattern:** Using plain strings/numbers for domain values.
+
+---
+
+### Parse and Validate Data with Schema.decode
+
+**Rule:** Parse and validate data with Schema.decode.
+
+**Use Cases:** Domain Modeling
+
+- `Schema.decode` is Effect-integrated parsing
+- `catchTag` for graceful error handling
+- Type-safe validation
+- Composable with Effect ecosystem
+
+**Anti-Pattern:** Using Schema.parse which throws exceptions.
+
+---
+
+### Process a Collection in Parallel with Effect.forEach
+
+**Rule:** Use Effect.forEach with concurrency limit for controlled parallel processing.
+
+**Use Cases:** Concurrency
+
+- `{ concurrency: N }` limits concurrent operations
+- Prevents resource exhaustion
+- Controls parallelism
+- Maintains stability
+
+**Anti-Pattern:** `Effect.all` on large arrays, starting all at once.
+
+---
+
+### Process a Large File with Constant Memory
+
+**Rule:** Use Stream.fromReadable with Node.js Readable for efficient file processing.
+
+**Use Cases:** Building Data Pipelines
+
+- Constant memory usage regardless of file size
+- Composable with Stream operators
+- Resource-safe file handling
+- Perfect for large files
+
+**Anti-Pattern:** Using `fs.readFileSync` or loading entire file in memory.
+
+---
+
+### Process collections of data asynchronously
+
+**Rule:** Leverage Stream for effectful collection processing with built-in concurrency.
+
+**Use Cases:** Building Data Pipelines
+
+- Lazy, pull-based processing
+- Concurrency control
+- Resource safety
+- Highly composable
+
+**Anti-Pattern:** Promise.all without concurrency limits, imperative loops.
+
+---
+
+### Process Items Concurrently
+
+**Rule:** Use Stream.mapEffect with concurrency for parallel item processing.
+
+**Use Cases:** Building Data Pipelines
+
+- `{ concurrency: 2 }` processes 2 items at once
+- Prevents overwhelming downstream services
+- Automatic backpressure
+- Structured concurrency
+
+**Anti-Pattern:** Processing sequentially when parallelism is beneficial.
+
+---
+
+### Process Items in Batches
+
+**Rule:** Use Stream.grouped(n) to transform stream into batches.
+
+**Use Cases:** Building Data Pipelines
+
+- Batch processing for bulk operations
+- Reduces number of network calls
+- Composable with other operators
+- Handles leftover items
+
+**Anti-Pattern:** Processing items one-by-one when batch APIs available.
+
+---
+
+### Process Streaming Data with Stream
+
+**Rule:** Use Stream for data arriving over time in composable, efficient way.
+
+**Use Cases:** Core Concepts
+
+- Models data that arrives over time
+- Lazy, memory-efficient processing
+- Rich operator API
+- Perfect for large/infinite data
+
+**Anti-Pattern:** Loading all data into memory before processing.
+
+---
+
+### Provide Configuration to Your App via a Layer
+
+**Rule:** Provide configuration to app via a Layer.
+
+**Use Cases:** Application Configuration
+
+- Configuration plugs into DI system
+- Available anywhere in program
+- Easy to mock for tests
+- Type-safe configuration
+
+**Anti-Pattern:** Manual configuration passing or global state.
+
+---
+
+### Provide Dependencies to Routes
+
+**Rule:** Define dependencies with Effect.Service and provide via Layer.
+
+**Use Cases:** Building APIs
+
+- Services abstract dependencies
+- Routes depend on interfaces
+- Easy to test with mocks
+- Decoupling
+
+**Anti-Pattern:** Hard-coded dependencies in route handlers.
+
+---
+
+### Redact and Handle Sensitive Data
+
+**Rule:** Use Redacted to wrap sensitive values, preventing accidental exposure.
+
+**Use Cases:** Data Types, Security, Sensitive Data, Logging
+
+- `Redacted.make(value)` wraps secrets
+- Logging shows `<redacted>` instead of value
+- Prevents accidental leaks
+- Type-safe sensitive data
+
+**Anti-Pattern:** Passing sensitive data as plain strings.
+
+---
+
+### Representing Time Spans with Duration
+
+**Rule:** Use Duration to model and manipulate time spans.
+
+**Use Cases:** Data Types, Time, Duration, Domain Modeling
+
+- Create with helpers: `Duration.seconds(5)`
+- Immutable and type-safe
+- Compose with arithmetic
+- Human-readable durations
+
+**Anti-Pattern:** Using raw numbers for time intervals (e.g., `5000` for 5s).
+
+---
+
+### Retry Operations Based on Specific Errors
+
+**Rule:** Use predicate-based retry policies to retry only for specific errors.
+
+**Use Cases:** Error Management
+
+- Retry only transient errors
+- Give up immediately on permanent errors
+- Type-safe error recovery
+- Prevents wasted retries
+
+**Anti-Pattern:** Retrying on all errors including permanent ones.
+
+---
+
+### Run Independent Effects in Parallel with Effect.all
+
+**Rule:** Use Effect.all to execute independent effects concurrently.
+
+**Use Cases:** Concurrency
+
+- `Effect.all` runs all effects simultaneously
+- Must specify `{ concurrency: "unbounded" }` or limit
+- Parallel execution saves time
+- Falls back if any effect fails
+
+**Anti-Pattern:** Running effects sequentially when they're independent.
+
+---
+
+### Sequencing with andThen, tap, and flatten
+
+**Rule:** Use sequencing combinators for composable workflows.
+
+**Use Cases:** Combinators, Sequencing, Composition, Side Effects
+
+- `andThen` runs one effect then another
+- `tap` performs side effects without changing value
+- `flatten` removes nesting
+- Preserves error handling
+
+**Anti-Pattern:** Manual unwrapping and re-wrapping structures.
+
+---
+
+### Trace Operations Across Services with Spans
+
+**Rule:** Use Effect.withSpan to create and annotate tracing spans.
+
+**Use Cases:** Observability, Tracing, Performance, Debugging
+
+- `Effect.withSpan()` creates custom spans
+- Annotate with attributes and events
+- Enables distributed tracing
+- Performance analysis
+
+**Anti-Pattern:** No tracing, limited visibility into request flows.
+
+---
+
+### Transform Data During Validation with Schema
+
+**Rule:** Use Schema.transform to safely convert data types during parsing.
+
+**Use Cases:** Domain Modeling
+
+- Schema validates AND transforms
+- `transformOrFail` for fallible transformations
+- Branded type creation
+- Single source of truth
+
+**Anti-Pattern:** Separate validation and transformation steps.
+
+---
+
+### Turn a Paginated API into a Single Stream
+
+**Rule:** Use Stream.paginateEffect to model paginated data source as stream.
+
+**Use Cases:** Building Data Pipelines
+
+- Declarative pagination
+- Lazy page fetching
+- Fully composable results
+- Memory efficient
+
+**Anti-Pattern:** Manual, stateful pagination loops.
+
+---
+
+### Type Classes for Equality, Ordering, and Hashing with Data.Class
+
+**Rule:** Use Data.Class for composable equality, ordering, and hashing type classes.
+
+**Use Cases:** Data Types, Type Classes, Equality, Ordering, Hashing
+
+- Derive automatic implementations
+- Use in sets, maps, sorting
+- Composable with other operations
+- Type-safe comparisons
+
+**Anti-Pattern:** Manual implementations, relying on reference equality.
+
+---
+
+### Use Chunk for High-Performance Collections
+
+**Rule:** Use Chunk for immutable, high-performance collections.
+
+**Use Cases:** Data Types, Collections, Performance
+
+- Efficient appends and updates
+- Structural sharing
+- Perfect for pipelines
+- Better than mutable arrays
+
+**Anti-Pattern:** Mutable arrays for shared or concurrent data.
+
+---
+
+### Use Effect.gen for Business Logic
+
+**Rule:** Use Effect.gen for business logic.
+
+**Use Cases:** Domain Modeling
+
+- Generators are flat and readable
+- Easier than nested flatMap
+- Better mental model
+- Standard Effect pattern
+
+**Anti-Pattern:** Deeply nested `.flatMap` chains.
+
+---
+
+### Use the Auto-Generated .Default Layer in Tests
+
+**Rule:** Use the auto-generated .Default layer in tests.
+
+**Use Cases:** Testing
+
+- `.Default` is canonical test layer
+- Correctly handles dependencies
+- Auto-generated for simplicity
+- Idiomatic test setup
+
+**Anti-Pattern:** Creating manual test layers or direct instantiation.
+
+---
+
+### Validate Request Body
+
+**Rule:** Use Http.request.schemaBodyJson with Schema to validate request bodies.
+
+**Use Cases:** Building APIs
+
+- Automatic parsing and validation
+- 400 Bad Request on validation failure
+- Type-safe request handling
+- Detailed error messages
+
+**Anti-Pattern:** Manual JSON parsing and validation in handlers.
+
+---
+
+### Validating and Parsing Branded Types
+
+**Rule:** Combine Schema and Brand to validate and parse branded types.
+
+**Use Cases:** Branded Types, Domain Modeling, Validation, Parsing
+
+- Schema validates input
+- Brand ensures validity
+- Compile-time and runtime safety
+- Reusable validation
+
+**Anti-Pattern:** Branding without validation.
+
+---
+
+### Work with Arbitrary-Precision Numbers using BigDecimal
+
+**Rule:** Use BigDecimal for arbitrary-precision numeric calculations.
+
+**Use Cases:** Data Types, Numeric Precision, Financial, Scientific
+
+- Precise decimal arithmetic
+- Avoids floating-point errors
+- Essential for financial/scientific domains
+- Immutable operations
+
+**Anti-Pattern:** Using JavaScript numbers for financial calculations.
+
+---
+
+### Work with Dates and Times using DateTime
+
+**Rule:** Use DateTime for immutable, time-zone-aware date/time handling.
+
+**Use Cases:** Data Types, Time, Date, Domain Modeling
+
+- Immutable date/time values
+- Time-zone aware
+- Safe arithmetic
+- Better than mutable Date
+
+**Anti-Pattern:** Using mutable Date objects.
+
+---
+
+### Work with Immutable Sets using HashSet
+
+**Rule:** Use HashSet for efficient, immutable set operations.
+
+**Use Cases:** Data Types, Collections, Set Operations
+
+- Efficient membership checks
+- Set algebra (union, intersection, difference)
+- Safe for concurrent use
+- Better than mutable Set
+
+**Anti-Pattern:** Mutable Set for shared state.
+
+---
+
+### Write Tests That Adapt to Application Code
+
+**Rule:** Write tests that adapt to application code.
+
+**Use Cases:** Testing
+
+- Don't change app code for tests
+- Test reflects real behavior
+- Tests catch regressions
+- Application is source of truth
+
+**Anti-Pattern:** Modifying app code to suit tests.
+
+---
+
+## 🟠 Advanced Patterns
+
+### Add Caching by Wrapping a Layer
+
+**Rule:** Use wrapping Layer to add caching without altering original implementation.
+
+**Use Cases:** Making HTTP Requests, Concurrency
+
+- Non-invasive functionality addition
+- Composable wrappers
+- Explicit composition
+- Clean separation of concerns
+
+**Anti-Pattern:** Adding caching logic directly to service implementation.
+
+---
+
+### Build a Basic HTTP Server
+
+**Rule:** Use managed Runtime from Layer for long-running Effect applications.
+
+**Use Cases:** Making HTTP Requests
+
+- Setup phase: Define dependencies in Layers
+- Runtime creation: Compile layers to optimized Runtime
+- Request handling: Create Effect per request
+- Execution: Use Runtime to execute requests
+
+**Anti-Pattern:** Rebuilding layers for every request.
+
+---
+
+### Create a Managed Runtime for Scoped Resources
+
+**Rule:** Create managed runtime for scoped resources.
+
+**Use Cases:** Project Setup & Execution, Making HTTP Requests, Resource Management
+
+- `Layer.launch` acquires all resources
+- Guarantees finalizers execute
+- Clean shutdown on completion
+- Resource-safe runtime
+
+**Anti-Pattern:** Acquiring resources without guaranteed cleanup.
+
+---
+
+### Create a Reusable Runtime from Layers
+
+**Rule:** Create reusable runtime from layers.
+
+**Use Cases:** Project Setup & Execution
+
+- Build dependency graph once at startup
+- Reuse Runtime for all operations
+- Efficient for long-running apps
+- One-time compilation cost
+
+**Anti-Pattern:** Rebuilding dependency graph for every operation.
+
+---
+
+### Decouple Fibers with Queues and PubSub
+
+**Rule:** Use Queue for point-to-point and PubSub for broadcast messaging.
+
+**Use Cases:** Concurrency
+
+- Producers don't know consumers
+- Automatic backpressure
+- Decoupled architecture
+- Scalable systems
+
+**Anti-Pattern:** Direct function calls between fibers, tight coupling.
+
+---
+
+### Execute Long-Running Apps with Effect.runFork
+
+**Rule:** Use Effect.runFork to launch long-running app as manageable Fiber.
+
+**Use Cases:** Project Setup & Execution, Concurrency
+
+- `runFork` starts effect and returns Fiber
+- Use for server applications
+- Enables graceful shutdown
+- Fiber provides lifecycle control
+
+**Anti-Pattern:** Using `runPromise` for long-running apps.
+
+---
+
+### Handle Unexpected Errors by Inspecting the Cause
+
+**Rule:** Handle unexpected errors by inspecting the Cause.
+
+**Use Cases:** Error Management
+
+- `Cause.isDie()` for unexpected defects
+- `Cause.isFailure()` for expected errors
+- `Cause.pretty()` for debugging
+- Log appropriately
+
+**Anti-Pattern:** Conflating expected errors and unexpected defects.
+
+---
+
+### Handle Unexpected Errors by Inspecting the Cause
+
+**Rule:** Use Cause to inspect, analyze, and handle all failure modes.
+
+**Use Cases:** Data Types, Error Handling, Debugging, Effect Results
+
+- `Cause` preserves full error context
+- Distinguish expected errors, defects, interruptions
+- Advanced error reporting
+- Robust recovery strategies
+
+**Anti-Pattern:** Losing error context, ignoring defects.
+
+---
+
+### Implement Graceful Shutdown for Your Application
+
+**Rule:** Use Effect.runFork and OS signal listeners for graceful shutdown.
+
+**Use Cases:** Concurrency, Resource Management
+
+- Launch app with `runFork` to get Fiber
+- Listen for OS signals (SIGINT, SIGTERM)
+- Call `Fiber.interrupt()` for clean shutdown
+- Finalizers guarantee cleanup
+
+**Anti-Pattern:** Abrupt termination without resource cleanup.
+
+---
+
+### Integrate Effect Tracing with OpenTelemetry
+
+**Rule:** Integrate Effect.withSpan with OpenTelemetry for trace export.
+
+**Use Cases:** Observability, Tracing, OpenTelemetry, Distributed Systems
+
+- Create OpenTelemetry spans
+- Export traces to observability platform
+- Full request flow visibility
+- Cross-service debugging
+
+**Anti-Pattern:** No distributed tracing, limited visibility.
+
+---
+
+### Manage Resource Lifecycles with Scope
+
+**Rule:** Use Scope for fine-grained, manual control over resource lifecycles.
+
+**Use Cases:** Resource Management, Concurrency
+
+- Fundamental building block for all resource management
+- Finalizers guaranteed to execute
+- LIFO order for cleanup
+- Composable resource safety
+
+**Anti-Pattern:** Manual resource management without Scope guarantees.
+
+---
+
+### Manage Resources Safely in a Pipeline
+
+**Rule:** Use Stream.acquireRelease for safe resource lifecycle within pipeline.
+
+**Use Cases:** Building Data Pipelines
+
+- Guaranteed cleanup even on failure
+- Declarative and co-located logic
+- Prevents resource leaks
+- Composable with stream operators
+
+**Anti-Pattern:** Manual try/finally with streams, resource leaks on failure.
+
+---
+
+### Manually Manage Lifecycles with Scope
+
+**Rule:** Use Effect.scope and Scope.addFinalizer for fine-grained control.
+
+**Use Cases:** Resource Management, Advanced DI, Custom Layers
+
+- Precise imperative control
+- Multiple resources with independent cleanup
+- Finalizers run in LIFO order
+- Building custom complex Layers
+
+**Anti-Pattern:** Nested try...finally blocks, unsafe in async.
+
+---
+
+### Organize Layers into Composable Modules
+
+**Rule:** Organize services into modular Layers composed hierarchically.
+
+**Use Cases:** Testing
+
+- Modular, scalable architecture
+- Isolated feature modules
+- Clean high-level composition
+- Easy to test modules
+
+**Anti-Pattern:** Flat composition, all services in one giant Layer.
+
+---
+
+### Poll for Status Until a Task Completes
+
+**Rule:** Use Effect.race to run repeating polling that interrupts when task completes.
+
+**Use Cases:** Concurrency
+
+- Main task vs polling in race
+- Polling auto-interrupts on completion
+- Declarative coordination
+- Self-contained, leak-free
+
+**Anti-Pattern:** Manual fiber management with fork and interrupt.
+
+---
+
+### Run Background Tasks with Effect.fork
+
+**Rule:** Use Effect.fork to start non-blocking background processes.
+
+**Use Cases:** Concurrency
+
+- `fork` creates concurrent fiber without blocking
+- Returns Fiber for lifecycle control
+- Essential for background tasks
+- `interrupt` for controlled shutdown
+
+**Anti-Pattern:** Using fork when you immediately need results.
+
+---
+
+### Understand Fibers as Lightweight Threads
+
+**Rule:** Understand Fiber as lightweight, virtual thread managed by runtime.
+
+**Use Cases:** Concurrency, Core Concepts
+
+- Millions of fibers on small thread pool
+- Cooperative scheduling
+- No OS thread overhead
+- Perfect for I/O-bound work
+
+**Anti-Pattern:** Thinking fibers are OS threads, expecting CPU parallelism.
+
+---
+
+# Part 2: Repository-Specific Guidance
+
+## Project Overview
+
+LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively answer user questions. The backend has been migrated to **TypeScript (Node.js + Hono)** with **Effect** for functional programming, type-safe error handling, and dependency injection.
+
+## Quick Reference: Common Commands
+
+### Starting Development
+
+```bash
+./start.sh                          # Start both backend and frontend (easiest)
+# OR manually:
+cd backend && bun run dev           # Terminal 1: Backend on http://localhost:8001
+cd frontend && bun run dev          # Terminal 2: Frontend on http://localhost:5173
+```
+
+### Testing
+
+```bash
+cd backend && bun test              # Watch mode
+cd backend && bun run test:run      # Run once (CI mode)
+cd backend && bun x vitest --ui     # Interactive UI
+./test-e2e.sh                       # End-to-end tests (requires both backend + frontend running)
+```
+
+### Code Quality
+
+```bash
+cd backend && bun run lint          # Check code with Ultracite
+cd backend && bun run lint:fix      # Fix linting issues
+cd backend && bun run typecheck     # Type-check without building
+cd frontend && bun run lint && bun run typecheck
+```
+
+### Building
+
+```bash
+cd backend && bun run build         # TypeScript → JavaScript
+cd backend && bun run start         # Run compiled backend
+cd frontend && bun run build        # Build optimized frontend
+```
+
+## Important Notes for Contributors
+
+**Linting & Formatting**: Uses [Ultracite](https://ultracite.dev/) for both backend and frontend. Running `lint:fix` ensures consistency. The backend has special handling for `data/` directory (linting disabled for conversation JSON files).
+
+**Version**: v2.0.0 - Complete rewrite from Python to TypeScript.
+
+## Architecture
+
+### Backend Structure (TypeScript - v2.0)
+
+**Tech Stack**:
+- **Framework**: Hono (lightweight, TypeScript-native)
+- **Validation**: Zod (runtime validation)
+- **Testing**: Vitest (modern test framework)
+- **Functional Programming**: Effect (error handling, DI, concurrency)
+
+**Key Modules**:
+- `config.ts` - Configuration (COUNCIL_MODELS, CHAIRMAN_MODEL)
+- `openrouter.ts` - OpenRouter API client with Zod validation
+- `storage.ts` - JSON file-based conversation storage
+- `council.ts` - 3-stage council logic (core algorithm)
+- `main.ts` - Hono HTTP server with all endpoints
+
+### Core Algorithm: 3-Stage Council Process
+
+**Stage 1: Collect Responses**
+- Query all council models in parallel
+- Return individual responses
+
+**Stage 2: Collect Rankings**
+- Anonymize responses as "Response A, B, C, etc."
+- Each model ranks others (anonymous, preventing bias)
+- Extract rankings from responses
+- Calculate aggregate rankings
+
+**Stage 3: Synthesize Final Answer**
+- Chairman model receives all responses + rankings
+- Synthesizes into final answer
+- Return complete result
+
+### Key Design Decisions
+
+**Anonymization Strategy** (Stage 2):
+- Models receive: "Response A", "Response B", etc.
+- Backend creates mapping: `{"Response A": "openai/gpt-5.1", ...}`
+- Frontend displays model names for readability
+
+**Ranking Format** (Stage 2 Prompt):
+- Models must include "FINAL RANKING:" header
+- Numbered list format: "1. Response C", "2. Response A", etc.
+- Strict format enables reliable parsing
+
+**Error Handling Philosophy**:
+- Continue with successful responses if some fail
+- Never fail entire request due to single model failure
+- Graceful degradation
+
+**Port Configuration**:
+- Backend: **8001** (NOT 8000)
+- Frontend: **5173** (Vite default)
+
+### Frontend Structure
+
+**Key Components**:
+- `App.jsx` - Main orchestration, conversation management
+- `Stage1.jsx` - Tab view of individual responses
+- `Stage2.jsx` - Raw evaluations + extracted rankings + aggregates
+- `Stage3.jsx` - Final synthesized answer
+- Styling: Light mode, #4a90e2 blue primary color
+
+**Important**: Metadata (label_to_model, aggregate_rankings) is NOT persisted to backend. Only available in API responses.
+
+## Common Gotchas
+
+1. **Port 8001 Already in Use**: Change port in `backend/src/main.ts` or kill the blocking process
+2. **TypeScript Build Errors**: Run `bun install` in backend directory
+3. **Missing OPENROUTER_API_KEY**: Create `.env` file in `backend/` with API key
+4. **Ranking Parse Failures**: Fallback regex extracts "Response X" patterns if strict format fails
+5. **CORS Issues**: Frontend and backend origins must match in `main.ts`
+
+## Development Guidelines
+
+1. **Always use Bun**: Never use npm, pnpm, or Node.js directly
+2. **Test before committing**: `bun run test:run` validates examples
+3. **Type safety**: TypeScript strict mode enabled
+4. **Error handling**: Use Data.TaggedError for custom errors
+5. **Dependency injection**: Use Effect.Service for testable code
+
+## Key Files
+
+- Main CLI: `scripts/ep.ts` (in the main repository)
+- Backend entry: `backend/src/main.ts`
+- Core logic: `backend/src/council.ts`
+- Frontend app: `frontend/src/App.jsx`
+- Test examples: `backend/src/*.test.ts`

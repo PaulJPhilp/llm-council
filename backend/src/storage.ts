@@ -1,6 +1,6 @@
-import { Effect, Either, Layer } from "effect";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import { Effect, Either, Layer } from "effect";
 import { z } from "zod";
 import { AppConfig } from "./config";
 import { StorageError } from "./errors";
@@ -166,31 +166,38 @@ export class StorageService extends Effect.Service<StorageService>()(
         Effect.gen(function* () {
           const path = getConversationPath(conversationId);
 
-          const data = yield* Effect.tryPromise({
-            try: () => fs.readFile(path, "utf-8"),
-            catch: (error) => {
-              if (
-                error instanceof Error &&
-                "code" in error &&
-                error.code === "ENOENT"
-              ) {
-                return null; // Conversation not found
-              }
-              return new StorageError({
-                operation: "getConversation",
-                path,
-                message: `Failed to read conversation: ${error instanceof Error ? error.message : String(error)}`,
-                cause: error,
-              });
-            },
-          });
+          // Use tryPromise and handle ENOENT specially
+          const fileContentEither = yield* Effect.either(
+            Effect.tryPromise({
+              try: () => fs.readFile(path, "utf-8"),
+              catch: (error) =>
+                new StorageError({
+                  operation: "getConversation",
+                  path,
+                  message: `Failed to read conversation: ${error instanceof Error ? error.message : String(error)}`,
+                  cause: error,
+                }),
+            })
+          );
 
-          if (data === null) {
-            return null;
+          // Handle file not found case
+          if (Either.isLeft(fileContentEither)) {
+            const error = fileContentEither.left;
+            if (
+              error instanceof StorageError &&
+              error.cause instanceof Error &&
+              "code" in error.cause &&
+              (error.cause as NodeJS.ErrnoException).code === "ENOENT"
+            ) {
+              return null; // Return null for not found
+            }
+            return yield* Effect.fail(error);
           }
 
+          const fileContent = fileContentEither.right;
+
           const parsed = yield* Effect.try({
-            try: () => JSON.parse(data),
+            try: () => JSON.parse(fileContent),
             catch: (error) =>
               new StorageError({
                 operation: "getConversation",
@@ -392,7 +399,7 @@ export const StorageServiceLive = StorageService.Default.pipe(
 
 // Standalone function exports for backward compatibility
 export const createConversation = (conversationId: string) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.createConversation(conversationId);
@@ -400,7 +407,7 @@ export const createConversation = (conversationId: string) =>
   );
 
 export const getConversation = (conversationId: string) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.getConversation(conversationId);
@@ -408,7 +415,7 @@ export const getConversation = (conversationId: string) =>
   );
 
 export const listConversations = () =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.listConversations;
@@ -416,7 +423,7 @@ export const listConversations = () =>
   );
 
 export const addUserMessage = (conversationId: string, content: string) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.addUserMessage(conversationId, content);
@@ -429,7 +436,7 @@ export const addAssistantMessage = (
   stage2: Stage2Response[],
   stage3: Stage3Response
 ) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.addAssistantMessage(
@@ -445,7 +452,7 @@ export const updateConversationTitle = (
   conversationId: string,
   title: string
 ) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const storage = yield* StorageService;
       return yield* storage.updateConversationTitle(conversationId, title);

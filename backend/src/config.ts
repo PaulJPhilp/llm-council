@@ -46,6 +46,13 @@ export class AppConfig extends Effect.Service<AppConfig>()("AppConfig", {
       ).pipe(
         Config.withDefault(30_000) // 30 seconds
       ),
+
+      // Mock mode for UI testing (uses fake LLM responses)
+      // Accepts: true, "true", "1", "yes" as true values
+      mockMode: yield* Config.string("MOCK_MODE").pipe(
+        Config.withDefault("false"),
+        Config.map((val) => val === "true" || val === "1" || val === "yes")
+      ),
     };
   }),
 }) {}

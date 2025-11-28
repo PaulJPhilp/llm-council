@@ -1,14 +1,15 @@
 {
-  "name": "llm-council-backend",
+  "name": "ensemble-backend",
   "version": "1.0.0",
-  "description": "LLM Council - TypeScript backend",
+  "description": "Ensemble - Multi-Model AI Deliberation System",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "bun --watch src/main.ts",
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "start:prod": "bun run build && bun run dist/server.js",
     "build": "bun run build:tsc",
     "build:tsc": "bun x tsc",
-    "start": "bun run dist/main.js",
     "test": "bun test",
     "test:run": "bun test --run",
     "test:ui": "bun x vitest --ui",
@@ -25,6 +26,7 @@
     "dotenv": "^16.6.1",
     "effect": "^3.8.0",
     "hono": "^4.10.6",
+    "liquidjs": "^10.24.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

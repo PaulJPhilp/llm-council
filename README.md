@@ -1,23 +1,23 @@
-# LLM Council
+# Ensemble
 
-![llmcouncil](header.jpg)
+![ensemble](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+The idea of this repo is to enable multi-model AI deliberation by consulting multiple LLM providers (e.g., OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4) simultaneously. Ensemble is a lightweight web application that uses OpenRouter to query multiple LLMs, facilitates anonymous peer review where models rank each other's responses, and synthesizes a final answer through a designated Chairman model.
 
 In a bit more detail, here is what happens when you submit a query:
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+1. **Stage 1: Individual Responses**. The user query is sent to all ensemble members (configured LLMs) in parallel, and their responses are collected. Individual responses are displayed in a tabbed interface for inspection.
+2. **Stage 2: Peer Review**. Each ensemble member evaluates the other responses with anonymized labels (Response A, B, C, etc.), preventing bias from model identity. Rankings are based on accuracy and insight.
+3. **Stage 3: Synthesis**. The designated Chairman model synthesizes all individual responses and peer rankings into a single, comprehensive final answer.
 
 ## Features
 
-- **Multi-LLM Consultation**: Query multiple leading LLMs simultaneously (GPT, Claude, Gemini, Grok, etc.)
-- **Anonymous Peer Review**: Models rank each other's responses without knowing the source, preventing bias
-- **Synthesis**: A designated "Chairman" model produces a final, refined answer
-- **Real-time Streaming**: Progressive updates via Server-Sent Events
-- **Persistent Conversations**: Save and review past deliberations
-- **Type-Safe Architecture**: Built with TypeScript and Effect for reliability
+- **Multi-LLM Ensemble**: Consult multiple leading LLMs simultaneously (GPT, Claude, Gemini, Grok, etc.)
+- **Anonymous Peer Review**: Ensemble members evaluate each other's work without bias from model identity
+- **Intelligent Synthesis**: A designated Chairman model produces a refined, comprehensive answer
+- **Real-time Streaming**: Progressive updates via Server-Sent Events (SSE)
+- **Conversation Persistence**: Save and review past ensemble deliberations
+- **Type-Safe Architecture**: Built with TypeScript, Bun, and Effect for reliability and correctness
 
 ## Setup
 

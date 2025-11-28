@@ -1,16 +1,17 @@
 {
-  "name": "frontend",
+  "name": "ensemble-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Ensemble - Multi-Model AI Deliberation System (Frontend)",
   "type": "module",
   "scripts": {
-    "dev": "bun x vite",
-    "build": "bun x tsc && bun x vite build",
+    "dev": "bun --bun x vite",
+    "build": "bun x tsc && bun --bun x vite build",
     "lint": "bun x ultracite check",
     "lint:fix": "bun x ultracite fix",
     "format": "bun x ultracite fix",
     "typecheck": "bun x tsc --noEmit",
-    "preview": "bun x vite preview"
+    "preview": "bun --bun x vite preview"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.11.41",

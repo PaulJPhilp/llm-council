@@ -1,12 +1,12 @@
 import { promises as fs } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
-    addAssistantMessage,
-    addUserMessage,
-    createConversation,
-    getConversation,
-    listConversations,
-    updateConversationTitle,
+  addAssistantMessage,
+  addUserMessage,
+  createConversation,
+  getConversation,
+  listConversations,
+  updateConversationTitle,
 } from "./storage";
 
 // Use a test data directory

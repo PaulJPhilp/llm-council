@@ -1,12 +1,14 @@
 import { Effect, Layer } from "effect";
 import { AppConfig } from "./config";
 import { CouncilError } from "./errors";
-import { OpenRouterClient } from "./openrouter";
+import { OpenRouterClient, type ChatMessage, type OpenRouterResponse } from "./openrouter";
+import { OpenRouterError } from "./errors";
+import { createMockOpenRouterClient } from "./openrouter.mock";
 import {
-    type Stage1Response,
-    type Stage2Response,
-    type Stage3Response,
-    StorageService,
+  type Stage1Response,
+  type Stage2Response,
+  type Stage3Response,
+  StorageService,
 } from "./storage";
 
 export type LabelToModelMap = {
@@ -38,7 +40,39 @@ export class CouncilService extends Effect.Service<CouncilService>()(
   {
     effect: Effect.gen(function* () {
       const config = yield* AppConfig;
-      const openRouter = yield* OpenRouterClient;
+
+      // Use mock client if mock mode is enabled
+      let openRouter: { queryModel: (m: string, msgs: ChatMessage[]) => Effect.Effect<OpenRouterResponse, OpenRouterError | never>; queryModelsParallel: (m: string[], msgs: ChatMessage[]) => Effect.Effect<Record<string, OpenRouterResponse | null>, OpenRouterError | never> };
+      if (config.mockMode) {
+        console.log("🎭 Mock mode enabled - using fake LLM responses");
+        const mockClient = createMockOpenRouterClient();
+        openRouter = {
+          queryModel: (model: string, messages: ChatMessage[]) =>
+            Effect.tryPromise({
+              try: () => mockClient.queryModel(model, messages),
+              catch: (error) => new OpenRouterError({
+                model,
+                message: `Mock queryModel failed: ${error instanceof Error ? error.message : String(error)}`,
+                cause: error,
+              }),
+            }),
+          queryModelsParallel: (models: string[], messages: ChatMessage[]) =>
+            Effect.tryPromise({
+              try: () => mockClient.queryModelsParallel(models, messages),
+              catch: (error) => new OpenRouterError({
+                model: "mock-parallel",
+                message: `Mock queryModelsParallel failed: ${error instanceof Error ? error.message : String(error)}`,
+                cause: error,
+              }),
+            }),
+        };
+      } else {
+        openRouter = yield* OpenRouterClient;
+      }
+
+      // Convert readonly array to mutable for use with queryModelsParallel
+      const councilModelsArray = Array.from(config.councilModels);
+
       // const _storage = yield* StorageService;
 
       /**
@@ -50,7 +84,7 @@ export class CouncilService extends Effect.Service<CouncilService>()(
 
           // Query all models in parallel using Effect streams
           const responses = yield* openRouter.queryModelsParallel(
-            config.councilModels,
+            councilModelsArray,
             messages
           );
 
@@ -137,7 +171,7 @@ Now provide your evaluation and ranking:`;
 
           // Get rankings from all council models in parallel
           const responses = yield* openRouter.queryModelsParallel(
-            config.councilModels,
+            councilModelsArray,
             messages
           );
 
@@ -423,15 +457,12 @@ export const calculateAggregateRankings = (
   Effect.runSync(
     Effect.gen(function* () {
       const council = yield* CouncilService;
-      return council.calculateAggregateRankings(
-        stage2Results,
-        labelToModel
-      );
+      return council.calculateAggregateRankings(stage2Results, labelToModel);
     }).pipe(Effect.provide(CouncilServiceLive))
   );
 
-export const generateConversationTitle = (content: string): string =>
-  Effect.runSync(
+export const generateConversationTitle = (content: string) =>
+  Effect.runPromise(
     Effect.gen(function* () {
       const council = yield* CouncilService;
       return yield* council.generateConversationTitle(content);
@@ -439,7 +470,7 @@ export const generateConversationTitle = (content: string): string =>
   );
 
 export const runFullCouncil = (userQuery: string) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const council = yield* CouncilService;
       return yield* council.runFullCouncil(userQuery);
@@ -447,7 +478,7 @@ export const runFullCouncil = (userQuery: string) =>
   );
 
 export const stage1CollectResponses = (userQuery: string) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const council = yield* CouncilService;
       return yield* council.stage1CollectResponses(userQuery);
@@ -458,7 +489,7 @@ export const stage2CollectRankings = (
   userQuery: string,
   stage1Results: Stage1Response[]
 ) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const council = yield* CouncilService;
       return yield* council.stage2CollectRankings(userQuery, stage1Results);
@@ -470,7 +501,7 @@ export const stage3SynthesizeFinal = (
   stage1Results: Stage1Response[],
   stage2Results: Stage2Response[]
 ) =>
-  Effect.runSync(
+  Effect.runPromise(
     Effect.gen(function* () {
       const council = yield* CouncilService;
       return yield* council.stage3SynthesizeFinal(

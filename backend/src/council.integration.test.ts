@@ -1,10 +1,10 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import {
-    runFullCouncil,
-    stage1CollectResponses,
-    stage2CollectRankings,
-    stage3SynthesizeFinal,
+  runFullCouncil,
+  stage1CollectResponses,
+  stage2CollectRankings,
+  stage3SynthesizeFinal,
 } from "./council";
 
 vi.mock("./openrouter");
