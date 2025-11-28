@@ -1,8 +1,7 @@
 import { type FC, useCallback, useEffect, useState } from "react";
 import { api } from "./api";
-import "./App.css";
-import ChatInterface from "./components/ChatInterface";
-import Sidebar from "./components/Sidebar";
+import { Layout } from "./components/Layout";
+import { ChatArea } from "./components/ChatArea";
 import type { Conversation, ConversationMetadata, StreamEvent } from "./types";
 
 type ExtendedMessage = {
@@ -268,19 +267,18 @@ const App: FC = () => {
   };
 
   return (
-    <div className="app">
-      <Sidebar
-        conversations={conversations}
-        currentConversationId={currentConversationId || undefined}
-        onNewConversation={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-      />
-      <ChatInterface
+    <Layout
+      conversations={conversations}
+      currentConversationId={currentConversationId || undefined}
+      onNewConversation={handleNewConversation}
+      onSelectConversation={handleSelectConversation}
+    >
+      <ChatArea
         conversation={currentConversation as Conversation | undefined}
         isLoading={isLoading}
         onSendMessage={handleSendMessage}
       />
-    </div>
+    </Layout>
   );
 };
 

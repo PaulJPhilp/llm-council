@@ -7,6 +7,10 @@ import type {
   ConversationMetadata,
   SendMessageResponse,
   StreamEvent,
+  WorkflowMetadata,
+  WorkflowDefinition,
+  WorkflowProgressEvent,
+  DAGRepresentation,
 } from "./types";
 
 const API_BASE = "http://localhost:8001";
@@ -126,6 +130,88 @@ export const api = {
               onEvent(event.type, event);
             } catch (e) {
               console.error("Failed to parse SSE event:", e);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.cancel();
+    }
+  },
+
+  /**
+   * List all available workflows (v3 API).
+   */
+  async listWorkflows(): Promise<WorkflowMetadata[]> {
+    const response = await fetch(`${API_BASE}/api/v3/workflows`);
+    if (!response.ok) {
+      throw new Error("Failed to list workflows");
+    }
+    return response.json();
+  },
+
+  /**
+   * Get a specific workflow definition with DAG (v3 API).
+   */
+  async getWorkflow(
+    workflowId: string
+  ): Promise<WorkflowDefinition & { dag: DAGRepresentation }> {
+    const response = await fetch(`${API_BASE}/api/v3/workflows/${workflowId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to get workflow: ${workflowId}`);
+    }
+    return response.json();
+  },
+
+  /**
+   * Execute a workflow and receive streaming progress updates (v3 API).
+   */
+  async executeWorkflowStream(
+    conversationId: string,
+    content: string,
+    workflowId: string,
+    onEvent: (event: WorkflowProgressEvent) => void
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_BASE}/api/v3/conversations/${conversationId}/execute/stream`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content, workflowId }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to execute workflow");
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No readable stream returned");
+    }
+
+    const decoder = new TextDecoder();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            try {
+              const event = JSON.parse(data) as WorkflowProgressEvent;
+              onEvent(event);
+            } catch (e) {
+              console.error("Failed to parse workflow event:", e);
             }
           }
         }

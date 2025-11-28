@@ -245,13 +245,25 @@ Key services are defined as Effect.Context with .Default layers for dependency r
 - Hono app running on port 8001
 - CORS enabled for `localhost:5173` (frontend) and `localhost:3000` (testing)
 
-*Endpoints*:
+*V1 Endpoints (Legacy - deprecated in Phase 6)*:
 - `GET /` - Health check
 - `GET /api/conversations` - List all conversations (returns metadata only)
 - `POST /api/conversations` - Create new conversation
 - `GET /api/conversations/:id` - Get conversation with full history
 - `POST /api/conversations/:id/message` - Send message (batch response)
 - `POST /api/conversations/:id/message/stream` - Send message (SSE streaming)
+
+*V3 Endpoints (New - Phase 6)*:
+- `GET /api/v3/workflows` - List available workflows with metadata
+- `GET /api/v3/workflows/:workflowId` - Get workflow definition with DAG visualization
+- `POST /api/v3/conversations/:conversationId/execute/stream` - Execute workflow with SSE progress streaming
+
+**`backend/src/workflow/`** - Workflow System (Phase 6)
+- `registry.ts` - WorkflowRegistry class managing workflow definitions and DAG conversion
+  - `toDAG()` - Converts WorkflowDefinition to React Flow format with node positions
+  - `calculatePositions()` - Topological sort for horizontal layout (250px between stages)
+- `workflows/council-integration.ts` - Integration layer for council execution with Effect services
+  - `executeCouncilWorkflow()` - Type-safe orchestration with proper dependency injection
 
 *Streaming (SSE) Response Format*:
 ```
@@ -303,33 +315,35 @@ data: {type: "complete"}
 - `sendMessageStream(id, content, onEvent)` - POST with SSE streaming
 - Uses native `fetch()` API with proper error handling
 
-**`src/components/`** - React Components
-- `ChatInterface.tsx` - Textarea input (multiline, Enter to send, Shift+Enter for newline)
+**`src/components/`** - React Components (Phase 6: New DAG Workflow UI)
+- `Layout.tsx` - Main layout with sidebar + main content area
+- `ChatArea.tsx` - Chat interface with message display and input
 - `Sidebar.tsx` - Conversation list and new conversation button
-- `CouncilComposer.tsx` - Wraps ChatInterface with styling
-- `CouncilThread.tsx` - Main display area with stage tabs
-- `Stage1.tsx` / `Stage1Enhanced.tsx` - Tab view of individual model responses
-- `Stage2.tsx` / `Stage2Enhanced.tsx` - Raw evaluations + extracted rankings + aggregate table
-- `Stage3.tsx` / `Stage3Enhanced.tsx` - Final synthesized answer
-- Each component has corresponding `.css` file for styling
+- `WorkflowSelector.tsx` - Dropdown for selecting available workflows
+- `WorkflowDAG.tsx` - React Flow DAG visualization with real-time status updates
+- `DAGNodeComponent.tsx` - Custom React Flow node with status indicators
+- `WorkflowExecutionView.tsx` - Combines WorkflowDAG + stage results panel
+- `StageResultsPanel.tsx` - Collapsible sidebar showing stage execution results
+- `WorkflowMessageRenderer.tsx` - Integrates workflow visualization into assistant-ui messages
 
-**Stage 2 Component (Critical Feature)**:
-- Shows RAW evaluation text from each model in tabs
-- De-anonymization happens CLIENT-SIDE for display (models received anonymous labels)
-- Shows "Extracted Ranking" below raw text for validation
-- Aggregate rankings table with average position and vote count
-- Explanatory text clarifies that bold model names are added for readability only
+**Layout Structure (Phase 6)**:
+- Flexbox layout: Left sidebar (w-64) + main content area (flex-1)
+- Sidebar: Conversation list with new/select functionality
+- Main: Chat area with message display and input
+- Responsive design with Tailwind CSS
 
-**Stage 3 Component**:
-- Final synthesized answer from chairman
-- Green-tinted background (#f0fff0) to distinguish from other stages
+**Workflow Visualization (Phase 6)**:
+- DAG nodes show execution status: pending (⏳) → running (⟳) → success (✓) / failed (✗)
+- Node colors: Gray (pending), Yellow (running), Green (success), Red (failed)
+- Real-time progress updates via SSE streaming
+- Stage results panel shows JSON data for each completed stage
+- Click nodes to view detailed stage output
 
-**Styling**:
-- Light mode theme (not dark mode)
+**Styling (Phase 6)**:
+- All styling via Tailwind CSS (no custom CSS files needed)
 - Primary color: #4a90e2 (blue)
-- Global markdown styling in `index.css` with `.markdown-content` class
-- 12px padding on all markdown content for proper spacing
-- Component-specific styles in corresponding `.css` files
+- Light mode theme with gray backgrounds
+- Responsive typography and spacing
 
 ## Key Design Decisions
 
@@ -539,6 +553,61 @@ const effect = Effect.gen(function*() {
   return result
 })
 ```
+
+## Phase 6: UI Cleanup & Migration (Complete)
+
+**What Changed**:
+1. **Deleted Legacy Components** (9 files):
+   - `Stage1.tsx`, `Stage1Enhanced.tsx`, `Stage2.tsx`, `Stage2Enhanced.tsx`, `Stage3.tsx`, `Stage3Enhanced.tsx`
+   - `CouncilComposer.tsx`, `CouncilThread.tsx`, `ChatInterface.tsx`
+   - `Stage1.css`, `Stage2.css`, `Stage3.css`, `ChatInterface.css`, `App.css`
+
+2. **Created New Components** (6 files):
+   - `Layout.tsx` - Main layout container (sidebar + main area)
+   - `ChatArea.tsx` - Chat interface with message display and input
+   - `WorkflowDAG.tsx` - React Flow visualization of workflow DAG
+   - `DAGNodeComponent.tsx` - Custom nodes with status indicators
+   - `WorkflowExecutionView.tsx` - Combined DAG + results panel
+   - `StageResultsPanel.tsx` - Collapsible results sidebar
+
+3. **Refactored App.tsx**:
+   - Removed `ChatInterface` import (deleted component)
+   - Added `Layout` and `ChatArea` composition
+   - Kept all message management and streaming logic
+   - Removed `App.css` import (using Tailwind CSS now)
+
+4. **Updated API Client** (`src/api.ts`):
+   - Added `listWorkflows()` - GET /api/v3/workflows
+   - Added `getWorkflow(workflowId)` - GET /api/v3/workflows/:id
+   - Added `executeWorkflowStream()` - POST with SSE for workflow execution
+
+5. **Extended Types** (`src/types.ts`):
+   - Added `WorkflowMetadata`, `WorkflowStage`, `WorkflowDefinition`
+   - Added `DAGNode`, `DAGEdge`, `DAGRepresentation`
+   - Added `WorkflowProgressEvent` and related types
+   - Extended `CouncilMetadata` with custom workflow data field
+
+6. **Updated Runtime** (`src/lib/council-runtime.ts`):
+   - Added `workflowId` parameter support
+   - Dual-mode operation: v3 API (workflows) and v1 API (legacy)
+   - Captures progress events and stage results into custom metadata
+   - Properly handles Effect service injection
+
+7. **Styling Migration**:
+   - Installed Tailwind CSS v4 with @tailwindcss/postcss
+   - Created `tailwind.config.js` and `postcss.config.js`
+   - All new components use Tailwind classes (no CSS files)
+   - Removed legacy CSS-in-files approach
+
+**Data Migration**:
+- No conversations to archive (new project, no legacy data)
+- Conversation format remains compatible with v1 API
+- Metadata (labelToModel, aggregateRankings) still ephemeral
+
+**Testing Verification**:
+- `bun run typecheck` - ✓ Pass
+- `bun run build` - ✓ Success (202 KB JS, 63 KB gzipped)
+- No breaking changes to existing API endpoints
 
 ## Cursor IDE Rules
 

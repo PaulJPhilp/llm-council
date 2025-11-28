@@ -3,16 +3,16 @@
  * Bridges workflow system with application services and configuration
  */
 
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import type { WorkflowResult, ProgressCallback } from "../core/workflow"
 import { executeWorkflow } from "../core/executor"
 import { createLLMCouncilWorkflow } from "./llm-council"
 import { createLiquidTemplateEngine } from "../core/template-engine"
 import type { TemplateEngine } from "../core/template"
 import type { WorkflowServices } from "../core/context"
-import type { OpenRouterClient } from "../../openrouter"
-import type { StorageService } from "../../storage"
-import type { AppConfig } from "../../config"
+import { OpenRouterClient } from "../../openrouter"
+import { StorageService } from "../../storage"
+import { AppConfig } from "../../config"
 import { StageExecutionError, WorkflowDefinitionError } from "../core/errors"
 
 /**
@@ -94,5 +94,44 @@ export const runFullCouncilWorkflowWithProgress = (
     storage,
     config,
     onProgress
+  )
+}
+
+/**
+ * Execute the complete LLM Council workflow with automatic service injection
+ * This version handles Effect service dependencies internally
+ *
+ * @param userQuery The user's question to answer
+ * @param onProgress Optional callback for progress events
+ * @returns Promise with workflow execution result
+ */
+export const executeCouncilWorkflow = (
+  userQuery: string,
+  onProgress?: WorkflowProgressCallback
+): Promise<WorkflowResult> => {
+  // Create dependency layers (same pattern as council.ts)
+  const baseLayer = AppConfig.Default
+  const servicesLayer = Layer.mergeAll(
+    StorageService.Default,
+    OpenRouterClient.Default
+  ).pipe(Layer.provide(baseLayer))
+  const dependenciesLayer = Layer.merge(servicesLayer, baseLayer)
+
+  return Effect.runPromise(
+    Effect.gen(function* () {
+      const openRouter = yield* OpenRouterClient
+      const storage = yield* StorageService
+      const config = yield* AppConfig
+
+      const result = yield* runFullCouncilWorkflow(
+        userQuery,
+        openRouter,
+        storage,
+        config,
+        onProgress
+      )
+
+      return result
+    }).pipe(Effect.provide(dependenciesLayer))
   )
 }

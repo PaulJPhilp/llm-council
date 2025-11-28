@@ -36,6 +36,13 @@ export type LabelToModelMap = Record<string, string>;
 export type CouncilMetadata = {
   label_to_model: LabelToModelMap; // Maps "Response A" -> "openai/gpt-5.1"
   aggregate_rankings: AggregateRanking[];
+  custom?: {
+    workflowId?: string;
+    nodes?: readonly DAGNode[];
+    edges?: readonly DAGEdge[];
+    stageResults?: Record<string, unknown>;
+    progressEvents?: WorkflowProgressEvent[];
+  };
 };
 
 /** Assistant message with all council stages and metadata */
@@ -126,3 +133,71 @@ export function isAssistantMessage(msg: Message): msg is AssistantMessage {
 export function isUserMessage(msg: Message): msg is UserMessage {
   return msg.role === "user";
 }
+
+/** Workflow metadata for listing/discovery */
+export type WorkflowMetadata = {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly description?: string;
+  readonly stageCount: number;
+};
+
+/** Workflow stage definition */
+export type WorkflowStage = {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly dependencies: readonly string[];
+};
+
+/** Workflow definition with stages and edges */
+export type WorkflowDefinition = {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly description?: string;
+  readonly stages: readonly WorkflowStage[];
+};
+
+/** DAG node for React Flow visualization */
+export type DAGNode = {
+  readonly id: string;
+  readonly type: "stage";
+  readonly data: {
+    readonly label: string;
+    readonly description?: string;
+    readonly type: string;
+  };
+  readonly position: { readonly x: number; readonly y: number };
+};
+
+/** DAG edge for React Flow visualization */
+export type DAGEdge = {
+  readonly id: string;
+  readonly source: string;
+  readonly target: string;
+};
+
+/** Complete DAG representation */
+export type DAGRepresentation = {
+  readonly nodes: readonly DAGNode[];
+  readonly edges: readonly DAGEdge[];
+};
+
+/** Workflow progress event types */
+export type WorkflowProgressEventType =
+  | "workflow_start"
+  | "stage_start"
+  | "stage_complete"
+  | "workflow_complete"
+  | "error";
+
+/** Workflow progress event structure */
+export type WorkflowProgressEvent = {
+  type: WorkflowProgressEventType;
+  stageId?: string;
+  data?: unknown;
+  timestamp?: string;
+  message?: string;
+};

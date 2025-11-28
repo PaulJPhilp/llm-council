@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+import { randomUUID } from "node:crypto"
+import { Hono } from "hono"
+import { cors } from "hono/cors"
 import {
   calculateAggregateRankings,
   generateConversationTitle,
@@ -8,20 +8,28 @@ import {
   stage1CollectResponses,
   stage2CollectRankings,
   stage3SynthesizeFinal,
-} from "./council";
+} from "./council"
 import {
   addAssistantMessage,
   addUserMessage,
   type Conversation,
   type ConversationMetadata,
+  type Stage1Response,
+  type Stage2Response,
+  type Stage3Response,
   createConversation,
   getConversation,
   listConversations,
   updateConversationTitle,
-} from "./storage";
+} from "./storage"
+import { WorkflowRegistry } from "./workflow/registry"
+import { executeCouncilWorkflow } from "./workflow/workflows/council-integration"
 
 // Initialize Hono app
-const app = new Hono();
+const app = new Hono()
+
+// Initialize Workflow Registry with default models
+const workflowRegistry = new WorkflowRegistry()
 
 // Enable CORS for local development
 app.use(
@@ -448,5 +456,158 @@ app.post("/api/v2/conversations/:conversationId/message/stream", async (c) => {
   }
 });
 
+// V3 API Endpoints - Workflow-based execution
+
+// List available workflows
+app.get("/api/v3/workflows", async (c) => {
+  try {
+    const workflows = workflowRegistry.list()
+    return c.json(workflows)
+  } catch (error) {
+    console.error("Error listing workflows:", error)
+    return c.json({ error: "Failed to list workflows" }, { status: 500 })
+  }
+})
+
+// Get a specific workflow with DAG representation
+app.get("/api/v3/workflows/:workflowId", async (c) => {
+  try {
+    const workflowId = c.req.param("workflowId")
+    const workflow = workflowRegistry.get(workflowId)
+
+    if (!workflow) {
+      return c.json({ error: "Workflow not found" }, { status: 404 })
+    }
+
+    const dag = workflowRegistry.toDAG(workflow)
+
+    return c.json({
+      id: workflow.id,
+      name: workflow.name,
+      version: workflow.version,
+      description: workflow.description,
+      dag,
+    })
+  } catch (error) {
+    console.error("Error getting workflow:", error)
+    return c.json({ error: "Failed to get workflow" }, { status: 500 })
+  }
+})
+
+// Execute a workflow via streaming SSE
+app.post("/api/v3/conversations/:conversationId/execute/stream", async (c) => {
+  try {
+    const conversationId = c.req.param("conversationId")
+    const body = await c.req.json<{ content: string; workflowId: string }>()
+    const { content, workflowId } = body
+
+    if (!content) {
+      return c.json({ error: "Message content is required" }, { status: 400 })
+    }
+
+    if (!workflowId) {
+      return c.json({ error: "Workflow ID is required" }, { status: 400 })
+    }
+
+    // Verify workflow exists
+    const workflow = workflowRegistry.get(workflowId)
+    if (!workflow) {
+      return c.json({ error: "Workflow not found" }, { status: 404 })
+    }
+
+    // Check if conversation exists
+    const conversation = await getConversation(conversationId)
+    if (!conversation) {
+      return c.json({ error: "Conversation not found" }, { status: 404 })
+    }
+
+    // Check if this is the first message
+    const isFirstMessage = conversation.messages.length === 0
+
+    // Create a readable stream for SSE
+    const stream = new ReadableStream<string>({
+      async start(controller) {
+        try {
+          // Add user message
+          await addUserMessage(conversationId, content)
+
+          // Start title generation in parallel if first message
+          let titlePromise: Promise<string> | null = null
+          if (isFirstMessage) {
+            titlePromise = generateConversationTitle(content)
+          }
+
+          // Track progress events
+          const progressEvents: unknown[] = []
+          const stageResults: Record<string, unknown> = {}
+
+          // Execute workflow with progress callback
+          await executeCouncilWorkflow(content, (event) => {
+            progressEvents.push(event)
+
+            // Stream the event to client
+            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+
+            // Capture stage results
+            if (event.type === "stage_complete" && "stageId" in event) {
+              stageResults[event.stageId as string] = event.data
+            }
+          })
+
+          // Wait for title if started
+          if (titlePromise) {
+            const title = await titlePromise
+            await updateConversationTitle(conversationId, title)
+            controller.enqueue(
+              `data: ${JSON.stringify({
+                type: "title_complete",
+                data: { title },
+              })}\n\n`
+            )
+          }
+
+          // Save the assistant message with workflow metadata
+          // TODO: Update storage schema to support workflow format
+          await addAssistantMessage(
+            conversationId,
+            (stageResults["parallel-query"] || []) as Stage1Response[],
+            (stageResults["peer-ranking"] || []) as Stage2Response[],
+            (stageResults["synthesis"] || {}) as Stage3Response
+          )
+
+          // Send completion event
+          controller.enqueue(
+            `data: ${JSON.stringify({ type: "workflow_complete" })}\n\n`
+          )
+          controller.close()
+        } catch (error) {
+          // Send error event
+          const errorMessage =
+            error instanceof Error ? error.message : String(error)
+          console.error("Error in workflow stream:", errorMessage)
+          controller.enqueue(
+            `data: ${JSON.stringify({
+              type: "error",
+              message: errorMessage,
+            })}\n\n`
+          )
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    })
+  } catch (error) {
+    console.error("Error in workflow SSE endpoint:", error)
+    return c.json({ error: "Failed to start stream" }, { status: 500 })
+  }
+})
+
 // Export app for deployment
-export default app;
+export default app
