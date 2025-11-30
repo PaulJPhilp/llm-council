@@ -1,285 +1,150 @@
-import { type FC, useCallback, useEffect, useState } from "react";
+import { useEffect, useState, type FC } from "react";
 import { api } from "./api";
-import { Layout } from "./components/Layout";
 import { ChatArea } from "./components/ChatArea";
-import type { Conversation, ConversationMetadata, StreamEvent } from "./types";
-
-type ExtendedMessage = {
-  role: string;
-  content?: string;
-  stage1?: unknown;
-  stage2?: unknown;
-  stage3?: unknown;
-  metadata?: unknown;
-  loading?: {
-    stage1: boolean;
-    stage2: boolean;
-    stage3: boolean;
-  };
-};
+import { Layout } from "./components/Layout";
+import { Toaster } from "./components/Toaster";
+import { WorkflowSelector } from "./components/WorkflowSelector";
+import { useConversation } from "./hooks/useConversation";
+import { useConversations } from "./hooks/useConversations";
+import { useMessageStreaming } from "./hooks/useMessageStreaming";
+import { toast } from "./lib/toast";
+import type { Conversation } from "./types";
 
 const App: FC = () => {
-  const [conversations, setConversations] = useState<ConversationMetadata[]>(
-    []
-  );
-  const [currentConversationId, setCurrentConversationId] = useState<
-    string | null
-  >(null);
-  const [currentConversation, setCurrentConversation] = useState<
-    (Conversation & { messages: ExtendedMessage[] }) | null
-  >(null);
-  const [isLoading, setIsLoading] = useState(false);
+	const [currentConversationId, setCurrentConversationId] = useState<
+		string | null
+	>(null);
+	const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>("");
+	const {
+		conversations,
+		loadConversations,
+		addConversation,
+		updateConversationTitle,
+	} = useConversations();
+	const {
+		conversation: currentConversation,
+		setConversation,
+		loadConversation,
+	} = useConversation(currentConversationId);
+	const { sendMessage, isLoading } = useMessageStreaming();
 
-  const loadConversations = useCallback(async () => {
-    try {
-      const convs = await api.listConversations();
-      setConversations(convs);
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-    }
-  }, []);
+	const handleNewConversation = async () => {
+		try {
+			const newConv = await api.createConversation();
+			addConversation({
+				id: newConv.id,
+				created_at: newConv.created_at,
+				title: newConv.title,
+				message_count: 0,
+			});
+			setCurrentConversationId(newConv.id);
+			setConversation(newConv);
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to create conversation";
+			toast.error(message);
+		}
+	};
 
-  const loadConversation = useCallback(async (id: string) => {
-    try {
-      const conv = await api.getConversation(id);
-      setCurrentConversation(
-        conv as Conversation & { messages: ExtendedMessage[] }
-      );
-    } catch (error) {
-      console.error("Failed to load conversation:", error);
-    }
-  }, []);
+	const handleSelectConversation = (id: string) => {
+		setCurrentConversationId(id);
+	};
 
-  // Load conversations on mount
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+	const handleSelectWorkflow = (workflowId: string) => {
+		setSelectedWorkflowId(workflowId);
+		// Persist workflow selection to localStorage
+		localStorage.setItem("selected_workflow_id", workflowId);
+	};
 
-  // Load conversation details when selected
-  useEffect(() => {
-    if (currentConversationId) {
-      loadConversation(currentConversationId);
-    }
-  }, [currentConversationId, loadConversation]);
+	// Load persisted workflow selection on mount
+	useEffect(() => {
+		const persisted = localStorage.getItem("selected_workflow_id");
+		if (persisted) {
+			setSelectedWorkflowId(persisted);
+		}
+	}, []);
 
-  const handleNewConversation = async () => {
-    try {
-      const newConv = await api.createConversation();
-      setConversations([
-        {
-          id: newConv.id,
-          created_at: newConv.created_at,
-          title: newConv.title,
-          message_count: 0,
-        },
-        ...conversations,
-      ]);
-      setCurrentConversationId(newConv.id);
-    } catch (error) {
-      console.error("Failed to create conversation:", error);
-    }
-  };
+	const handleSendMessage = async (content: string) => {
+		if (!currentConversationId) {
+			toast.error("Please select or create a conversation first");
+			return;
+		}
+		if (!selectedWorkflowId) {
+			toast.error("Please select a workflow first");
+			return;
+		}
+		if (!currentConversation) {
+			toast.info("Loading conversation...");
+			try {
+				await loadConversation(currentConversationId);
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to load conversation";
+				toast.error(message);
+				return;
+			}
+		}
 
-  const handleSelectConversation = (id: string) => {
-    setCurrentConversationId(id);
-  };
+		try {
+			await sendMessage(
+				currentConversationId,
+				content,
+				currentConversation,
+				setConversation,
+				{
+					workflowId: selectedWorkflowId,
+					onComplete: () => {
+						loadConversations();
+					},
+					onTitleUpdate: (title) => {
+						if (currentConversationId) {
+							updateConversationTitle(currentConversationId, title);
+						}
+						loadConversations();
+					},
+					onError: (error) => {
+						toast.error(error.message || "Failed to send message");
+					},
+				},
+			);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to send message";
+			toast.error(message);
+		}
+	};
 
-  const handleSendMessage = async (content: string) => {
-    if (!(currentConversationId && currentConversation)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Optimistically add user message to UI
-      const userMessage: ExtendedMessage = { role: "user", content };
-      setCurrentConversation((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return {
-          ...prev,
-          messages: [...prev.messages, userMessage],
-        } as typeof prev;
-      });
-
-      // Create a partial assistant message that will be updated progressively
-      const assistantMessage: ExtendedMessage = {
-        role: "assistant",
-        stage1: null,
-        stage2: null,
-        stage3: null,
-        metadata: null,
-        loading: {
-          stage1: false,
-          stage2: false,
-          stage3: false,
-        },
-      };
-
-      // Add the partial assistant message
-      setCurrentConversation((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return {
-          ...prev,
-          messages: [...prev.messages, assistantMessage],
-        } as typeof prev;
-      });
-
-      // Send message with streaming
-      await api.sendMessageStream(
-        currentConversationId,
-        content,
-        (eventType: string, event: StreamEvent) => {
-          switch (eventType) {
-            case "stage1_start":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg?.loading) {
-                  lastMsg.loading.stage1 = true;
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "stage1_complete":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg) {
-                  lastMsg.stage1 = event.data;
-                  if (lastMsg.loading) {
-                    lastMsg.loading.stage1 = false;
-                  }
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "stage2_start":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg?.loading) {
-                  lastMsg.loading.stage2 = true;
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "stage2_complete":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg) {
-                  lastMsg.stage2 = event.data;
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  lastMsg.metadata = (event as any).metadata;
-                  if (lastMsg.loading) {
-                    lastMsg.loading.stage2 = false;
-                  }
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "stage3_start":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg?.loading) {
-                  lastMsg.loading.stage3 = true;
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "stage3_complete":
-              setCurrentConversation((prev) => {
-                if (!prev) {
-                  return prev;
-                }
-                const messages = [...prev.messages];
-                const lastMsg = messages.at(-1);
-                if (lastMsg) {
-                  lastMsg.stage3 = event.data;
-                  if (lastMsg.loading) {
-                    lastMsg.loading.stage3 = false;
-                  }
-                }
-                return { ...prev, messages };
-              });
-              break;
-
-            case "title_complete":
-              // Reload conversations to get updated title
-              loadConversations();
-              break;
-
-            case "complete":
-              // Stream complete, reload conversations list
-              loadConversations();
-              setIsLoading(false);
-              break;
-
-            case "error":
-              console.error("Stream error:", event);
-              setIsLoading(false);
-              break;
-
-            default:
-              console.log("Unknown event type:", eventType);
-          }
-        }
-      );
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      // Remove optimistic messages on error
-      setCurrentConversation((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return {
-          ...prev,
-          messages: prev.messages.slice(0, -2),
-        };
-      });
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Layout
-      conversations={conversations}
-      currentConversationId={currentConversationId || undefined}
-      onNewConversation={handleNewConversation}
-      onSelectConversation={handleSelectConversation}
-    >
-      <ChatArea
-        conversation={currentConversation as Conversation | undefined}
-        isLoading={isLoading}
-        onSendMessage={handleSendMessage}
-      />
-    </Layout>
-  );
+	return (
+		<>
+			<Layout
+				conversations={conversations}
+				currentConversationId={currentConversationId || undefined}
+				onNewConversation={handleNewConversation}
+				onSelectConversation={handleSelectConversation}
+			>
+				<div className="flex flex-col h-full">
+					{/* Workflow Selector */}
+					<div className="border-b border-border bg-background">
+						<WorkflowSelector
+							onSelectWorkflow={handleSelectWorkflow}
+							isLoading={isLoading}
+						/>
+					</div>
+					{/* Chat Area */}
+					<ChatArea
+						conversation={currentConversation as Conversation | undefined}
+						isLoading={isLoading}
+						onSendMessage={handleSendMessage}
+					/>
+				</div>
+			</Layout>
+			<Toaster />
+		</>
+	);
 };
 
 export default App;

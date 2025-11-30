@@ -1,6 +1,20 @@
 import type { FC } from "react";
 import type { ConversationMetadata } from "../types";
-import "./Sidebar.css";
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "./ui/sidebar";
+import { Plus } from "lucide-react";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 type SidebarProps = {
   conversations: ConversationMetadata[];
@@ -9,66 +23,84 @@ type SidebarProps = {
   onNewConversation: () => void;
 };
 
-const Sidebar: FC<SidebarProps> = ({
+const SidebarContentInner: FC<SidebarProps> = ({
   conversations,
   currentConversationId,
   onSelectConversation,
   onNewConversation,
-}) => (
-  <aside aria-label="Conversations" className="sidebar" role="navigation">
-    <div className="sidebar-header">
-      <h1>LLM Council</h1>
-      <button
-        aria-label="Create a new conversation"
-        className="new-conversation-btn"
-        onClick={onNewConversation}
-      >
-        + New Conversation
-      </button>
-    </div>
+}) => {
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
-    <nav
-      aria-label="Conversation history"
-      className="conversation-list"
-      role="region"
-    >
-      {conversations.length === 0 ? (
-        <div aria-live="polite" className="no-conversations" role="status">
-          No conversations yet
-        </div>
-      ) : (
-        <ul className="conversation-items">
-          {conversations.map((conv) => (
-            <li key={conv.id}>
-              <button
-                aria-current={
-                  conv.id === currentConversationId ? "page" : undefined
-                }
-                aria-label={`${conv.title || "New Conversation"}, ${conv.message_count} messages`}
-                className={`conversation-item ${
-                  conv.id === currentConversationId ? "active" : ""
-                }`}
-                onClick={() => onSelectConversation(conv.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectConversation(conv.id);
-                  }
-                }}
-              >
-                <div className="conversation-title">
-                  {conv.title || "New Conversation"}
-                </div>
-                <div className="conversation-meta">
-                  {conv.message_count} messages
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </nav>
-  </aside>
-);
+  return (
+    <>
+      <SidebarHeader className="h-10 px-2 flex items-center justify-between gap-1 border-b">
+        {!isCollapsed && (
+          <h1 className="text-xs font-semibold truncate">LLM Council</h1>
+        )}
+        <Button
+          size="icon"
+          variant="ghost"
+          className={cn(
+            "h-7 w-7",
+            !isCollapsed && "w-auto px-2",
+          )}
+          onClick={onNewConversation}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {!isCollapsed && <span className="text-xs ml-1">New</span>}
+        </Button>
+      </SidebarHeader>
+
+      <SidebarContent className="px-1 py-1">
+        <SidebarGroup>
+          {!isCollapsed && (
+            <SidebarGroupLabel className="px-2 text-[10px] text-muted-foreground uppercase">
+              Conversations
+            </SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
+            {conversations.length === 0 ? (
+              <div className="px-2 py-3 text-[10px] text-center text-muted-foreground">
+                {!isCollapsed && "No conversations"}
+              </div>
+            ) : (
+              <SidebarMenu>
+                {conversations.map((conv) => (
+                  <SidebarMenuItem key={conv.id}>
+                    <SidebarMenuButton
+                      isActive={conv.id === currentConversationId}
+                      onClick={() => onSelectConversation(conv.id)}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      tooltip={conv.title || "New Conversation"}
+                    >
+                      <span className="truncate flex-1 text-left">
+                        {conv.title || "New Conversation"}
+                      </span>
+                      {!isCollapsed && (
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          {conv.message_count}
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </>
+  );
+};
+
+const Sidebar: FC<SidebarProps> = (props) => {
+  return (
+    <ShadcnSidebar collapsible="icon" className="border-r">
+      <SidebarContentInner {...props} />
+    </ShadcnSidebar>
+  );
+};
 
 export default Sidebar;

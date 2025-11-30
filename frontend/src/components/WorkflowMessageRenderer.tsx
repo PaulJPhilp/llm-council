@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import type { AssistantMessage } from "../types"
+import type { AssistantMessage, WorkflowDefinition, DAGRepresentation, WorkflowProgressEvent } from "../types"
 import { WorkflowExecutionView } from "./WorkflowExecutionView"
 
 interface WorkflowMessageRendererProps {
@@ -28,17 +28,22 @@ export function WorkflowMessageRenderer({
     }
   }, [message.metadata])
 
-  // If no workflow data, show a fallback
+  // If no workflow data, show the final response (v1 legacy format)
   if (!workflowData) {
+    const finalResponse = message.stage3?.response || "No response available"
     return (
-      <div className="flex items-center justify-center p-8 text-gray-500">
-        <p>No workflow data available</p>
+      <div className="p-4">
+        <div className="prose prose-sm max-w-none">
+          <div className="whitespace-pre-wrap text-sm text-foreground">
+            {finalResponse}
+          </div>
+        </div>
       </div>
     )
   }
 
   // Create workflow definition from metadata
-  const workflow: any = {
+  const workflow: WorkflowDefinition & { dag: DAGRepresentation } = {
     id: workflowData.workflowId,
     name: "Workflow",
     version: "1.0.0",
@@ -50,18 +55,18 @@ export function WorkflowMessageRenderer({
   }
 
   return (
-    <div className="w-full h-96 border border-gray-200 rounded-lg overflow-hidden">
+    <div className="w-full h-96 border border-border rounded-lg overflow-hidden">
       {isLoading && (
-        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
           <div className="text-center">
             <div className="inline-block animate-spin">⟳</div>
-            <p className="mt-2 text-sm text-gray-600">Executing workflow...</p>
+            <p className="mt-2 text-sm text-muted-foreground">Executing workflow...</p>
           </div>
         </div>
       )}
       <WorkflowExecutionView
         workflow={workflow}
-        progressEvents={workflowData.progressEvents as any}
+        progressEvents={(workflowData.progressEvents || []) as WorkflowProgressEvent[]}
         isExecuting={isLoading}
       />
     </div>

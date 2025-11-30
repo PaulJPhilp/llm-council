@@ -15,7 +15,7 @@ The backend implements a 3-stage council process:
 - **Framework**: [Hono](https://hono.dev/) - Modern, lightweight web framework
 - **Language**: TypeScript
 - **Runtime**: Node.js 18+
-- **Validation**: [Zod](https://zod.dev/) - TypeScript-first schema validation
+- **Validation**: [Effect Schema](https://effect.website/docs/schema) - TypeScript-first schema validation
 - **Testing**: [Vitest](https://vitest.dev/) - Blazing fast unit test framework
 
 ## Setup
@@ -237,7 +237,7 @@ To change, edit the CORS middleware in `src/main.ts`.
 
 1. Add route handler to `src/main.ts`
 2. Import any required functions
-3. Use Zod for request/response validation
+3. Use Effect Schema for request/response validation
 4. Return JSON responses with appropriate status codes
 
 ### Error Handling
@@ -249,7 +249,7 @@ To change, edit the CORS middleware in `src/main.ts`.
 ### Type Safety
 
 - All functions have explicit parameter and return types
-- Zod schemas validate runtime data from external APIs
+- Effect Schema validates runtime data from external APIs
 - Use TypeScript's strict mode for compile-time checks
 
 ## Migration Notes
@@ -257,7 +257,7 @@ To change, edit the CORS middleware in `src/main.ts`.
 This backend is a TypeScript port of the original Python backend:
 - Python `async/await` → TypeScript `async/await` (same patterns)
 - FastAPI → Hono (similar routing and middleware approach)
-- Pydantic validation → Zod validation
+- Pydantic validation → Effect Schema validation
 - Python file I/O → Node.js `fs/promises`
 - Python regex → JavaScript regex (mostly compatible)
 

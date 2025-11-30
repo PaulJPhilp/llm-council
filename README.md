@@ -2,7 +2,20 @@
 
 ![ensemble](header.jpg)
 
-The idea of this repo is to enable multi-model AI deliberation by consulting multiple LLM providers (e.g., OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4) simultaneously. Ensemble is a lightweight web application that uses OpenRouter to query multiple LLMs, facilitates anonymous peer review where models rank each other's responses, and synthesizes a final answer through a designated Chairman model.
+## Inspiration
+
+Ensemble is inspired by Andrej Karpathy's idea of LLM committees / councils ([link](https://x.com/karpathy/status/1992381094667411768)): rather than trusting a single model, you run multiple models, have them critique each other's answers, and then synthesize a final answer.
+
+Ensemble takes that idea and turns it into a production-ready TypeScript + Effect system with:
+
+- parallel model querying
+- anonymous peer review
+- a "chairman" synthesis stage
+- strict typing, streaming, and persistence
+
+## Overview
+
+Ensemble enables multi-model AI deliberation by consulting multiple LLM providers (e.g., OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4) simultaneously. It's a lightweight web application that uses OpenRouter to query multiple LLMs, facilitates anonymous peer review where models rank each other's responses, and synthesizes a final answer through a designated Chairman model.
 
 In a bit more detail, here is what happens when you submit a query:
 

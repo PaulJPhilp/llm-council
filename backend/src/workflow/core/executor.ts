@@ -1,9 +1,10 @@
-import { Effect, Graph, Option } from "effect"
+import { Effect, Either, Graph, Option } from "effect"
 import type { Stage, StageResult } from "./stage"
 import type { WorkflowDefinition, WorkflowResult, WorkflowProgressEvent, ProgressCallback } from "./workflow"
 import type { WorkflowContext, WorkflowServices } from "./context"
 import { WorkflowContextBuilder, ContextUpdater } from "./context"
 import { WorkflowDefinitionError, StageExecutionError } from "./errors"
+import { trackWorkflowStage } from "../../observability"
 
 /**
  * Build a directed graph of stages based on their dependencies
@@ -133,8 +134,23 @@ export function executeWorkflow(
       // Get results from dependency stages for input
       const dependencyResults = getDependencyResults(stage, ctx)
 
-      // Execute the stage
-      const result = yield* stage.execute(ctx, dependencyResults)
+      // Execute the stage with observability
+      const stageStartTime = yield* Effect.sync(() => Date.now())
+      const stageResult = yield* Effect.either(
+        stage.execute(ctx, dependencyResults)
+      )
+      const stageDuration = yield* Effect.sync(() => Date.now() - stageStartTime)
+
+      if (Either.isLeft(stageResult)) {
+        // Track stage failure
+        yield* trackWorkflowStage(stage.id, stageDuration, false)
+        return yield* Effect.fail(stageResult.left)
+      }
+
+      const result = stageResult.right
+
+      // Track stage success
+      yield* trackWorkflowStage(stage.id, stageDuration, true)
 
       // Update context with stage result
       ctx = ContextUpdater.withStageResult(ctx, stage.id, result)

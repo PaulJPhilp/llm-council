@@ -26,8 +26,7 @@
     "dotenv": "^16.6.1",
     "effect": "^3.8.0",
     "hono": "^4.10.6",
-    "liquidjs": "^10.24.0",
-    "zod": "^3.25.76"
+    "liquidjs": "^10.24.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",

@@ -1,9 +1,13 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
-import { Effect, Either, Layer } from "effect";
-import { z } from "zod";
+import { Effect, Either, Layer, Schema } from "effect";
 import { AppConfig } from "./config";
 import { StorageError } from "./errors";
+import {
+  trackStorageOperation,
+  withSpan,
+  logError,
+} from "./observability";
 
 // Type definitions
 export type UserMessage = {
@@ -38,6 +42,7 @@ export type Message = UserMessage | AssistantMessage;
 
 export type Conversation = {
   id: string;
+  user_id: string;
   created_at: string;
   title: string;
   messages: Message[];
@@ -50,42 +55,43 @@ export type ConversationMetadata = {
   message_count: number;
 };
 
-// Zod schema for validation
-const UserMessageSchema = z.object({
-  role: z.literal("user"),
-  content: z.string(),
+// Effect Schema for validation
+const UserMessageSchema = Schema.Struct({
+  role: Schema.Literal("user"),
+  content: Schema.String,
 });
 
-const Stage1ResponseSchema = z.object({
-  model: z.string(),
-  response: z.string(),
+const Stage1ResponseSchema = Schema.Struct({
+  model: Schema.String,
+  response: Schema.String,
 });
 
-const Stage2ResponseSchema = z.object({
-  model: z.string(),
-  ranking: z.string(),
-  parsed_ranking: z.array(z.string()),
+const Stage2ResponseSchema = Schema.Struct({
+  model: Schema.String,
+  ranking: Schema.String,
+  parsed_ranking: Schema.Array(Schema.String),
 });
 
-const Stage3ResponseSchema = z.object({
-  model: z.string(),
-  response: z.string(),
+const Stage3ResponseSchema = Schema.Struct({
+  model: Schema.String,
+  response: Schema.String,
 });
 
-const AssistantMessageSchema = z.object({
-  role: z.literal("assistant"),
-  stage1: z.array(Stage1ResponseSchema),
-  stage2: z.array(Stage2ResponseSchema),
+const AssistantMessageSchema = Schema.Struct({
+  role: Schema.Literal("assistant"),
+  stage1: Schema.Array(Stage1ResponseSchema),
+  stage2: Schema.Array(Stage2ResponseSchema),
   stage3: Stage3ResponseSchema,
 });
 
-const MessageSchema = z.union([UserMessageSchema, AssistantMessageSchema]);
+const MessageSchema = Schema.Union(UserMessageSchema, AssistantMessageSchema);
 
-const ConversationSchema = z.object({
-  id: z.string(),
-  created_at: z.string(),
-  title: z.string(),
-  messages: z.array(MessageSchema),
+const ConversationSchema = Schema.Struct({
+  id: Schema.String,
+  user_id: Schema.String,
+  created_at: Schema.String,
+  title: Schema.String,
+  messages: Schema.Array(MessageSchema),
 });
 
 /**
@@ -131,123 +137,196 @@ export class StorageService extends Effect.Service<StorageService>()(
       /**
        * Create a new conversation
        */
-      const createConversation = (conversationId: string) =>
-        Effect.gen(function* () {
-          yield* ensureDataDir;
+      const createConversation = (conversationId: string, userId: string) =>
+        withSpan(
+          "storage.create",
+          {
+            "storage.operation": "create",
+            "storage.conversation_id": conversationId,
+          },
+          Effect.gen(function* () {
+            const startTime = Date.now();
+            yield* ensureDataDir;
 
-          const conversation: Conversation = {
-            id: conversationId,
-            created_at: new Date().toISOString(),
-            title: "New Conversation",
-            messages: [],
-          };
+            const conversation: Conversation = {
+              id: conversationId,
+              user_id: userId,
+              created_at: new Date().toISOString(),
+              title: "New Conversation",
+              messages: [],
+            };
 
-          const path = getConversationPath(conversationId);
+            const path = getConversationPath(conversationId);
 
-          yield* Effect.tryPromise({
-            try: () =>
-              fs.writeFile(path, JSON.stringify(conversation, null, 2)),
-            catch: (error) =>
-              new StorageError({
-                operation: "createConversation",
-                path,
-                message: `Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`,
-                cause: error,
-              }),
-          });
+            const result = yield* Effect.either(
+              Effect.tryPromise({
+                try: () =>
+                  fs.writeFile(path, JSON.stringify(conversation, null, 2)),
+                catch: (error) =>
+                  new StorageError({
+                    operation: "createConversation",
+                    path,
+                    message: `Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`,
+                    cause: error,
+                  }),
+              })
+            );
 
-          return conversation;
-        });
+            const duration = Date.now() - startTime;
+
+            if (Either.isLeft(result)) {
+              yield* trackStorageOperation("create", duration, true);
+              yield* logError("Storage operation failed", result.left, {
+                operation: "create",
+                conversationId,
+              });
+              return yield* Effect.fail(result.left);
+            }
+
+            yield* trackStorageOperation("create", duration, false);
+            return conversation;
+          })
+        );
 
       /**
        * Load a conversation from storage
        */
       const getConversation = (conversationId: string) =>
-        Effect.gen(function* () {
-          const path = getConversationPath(conversationId);
+        withSpan(
+          "storage.get",
+          {
+            "storage.operation": "get",
+            "storage.conversation_id": conversationId,
+          },
+          Effect.gen(function* () {
+            const startTime = Date.now();
+            const path = getConversationPath(conversationId);
 
-          // Use tryPromise and handle ENOENT specially
-          const fileContentEither = yield* Effect.either(
-            Effect.tryPromise({
-              try: () => fs.readFile(path, "utf-8"),
+            // Use tryPromise and handle ENOENT specially
+            const fileContentEither = yield* Effect.either(
+              Effect.tryPromise({
+                try: () => fs.readFile(path, "utf-8"),
+                catch: (error) =>
+                  new StorageError({
+                    operation: "getConversation",
+                    path,
+                    message: `Failed to read conversation: ${error instanceof Error ? error.message : String(error)}`,
+                    cause: error,
+                  }),
+              })
+            );
+
+            // Handle file not found case
+            if (Either.isLeft(fileContentEither)) {
+              const error = fileContentEither.left;
+              const duration = Date.now() - startTime;
+              if (
+                error instanceof StorageError &&
+                error.cause instanceof Error &&
+                "code" in error.cause &&
+                (error.cause as NodeJS.ErrnoException).code === "ENOENT"
+              ) {
+                // Not found is not an error, just return null
+                yield* trackStorageOperation("get", duration, false);
+                return null;
+              }
+              yield* trackStorageOperation("get", duration, true);
+              yield* logError("Storage operation failed", error, {
+                operation: "get",
+                conversationId,
+              });
+              return yield* Effect.fail(error);
+            }
+
+            const fileContent = fileContentEither.right;
+
+            const parsed = yield* Effect.try({
+              try: () => JSON.parse(fileContent),
               catch: (error) =>
                 new StorageError({
                   operation: "getConversation",
                   path,
-                  message: `Failed to read conversation: ${error instanceof Error ? error.message : String(error)}`,
+                  message: `Failed to parse conversation JSON: ${error instanceof Error ? error.message : String(error)}`,
                   cause: error,
                 }),
-            })
-          );
+            });
 
-          // Handle file not found case
-          if (Either.isLeft(fileContentEither)) {
-            const error = fileContentEither.left;
-            if (
-              error instanceof StorageError &&
-              error.cause instanceof Error &&
-              "code" in error.cause &&
-              (error.cause as NodeJS.ErrnoException).code === "ENOENT"
-            ) {
-              return null; // Return null for not found
-            }
-            return yield* Effect.fail(error);
-          }
+            // Validate with Effect Schema
+            const validated = yield* Schema.decodeUnknown(ConversationSchema)(parsed).pipe(
+              Effect.mapError((error) =>
+                new StorageError({
+                  operation: "getConversation",
+                  path,
+                  message: `Invalid conversation data: ${String(error)}`,
+                  cause: error,
+                })
+              )
+            );
 
-          const fileContent = fileContentEither.right;
-
-          const parsed = yield* Effect.try({
-            try: () => JSON.parse(fileContent),
-            catch: (error) =>
-              new StorageError({
-                operation: "getConversation",
-                path,
-                message: `Failed to parse conversation JSON: ${error instanceof Error ? error.message : String(error)}`,
-                cause: error,
-              }),
-          });
-
-          const validated = yield* Effect.try({
-            try: () => ConversationSchema.parse(parsed),
-            catch: (error) =>
-              new StorageError({
-                operation: "getConversation",
-                path,
-                message: `Invalid conversation data: ${error instanceof Error ? error.message : String(error)}`,
-                cause: error,
-              }),
-          });
-
-          return validated;
-        });
+            const duration = Date.now() - startTime;
+            yield* trackStorageOperation("get", duration, false);
+            return validated;
+          })
+        );
 
       /**
        * Save a conversation to storage
        */
       const saveConversation = (conversation: Conversation) =>
-        Effect.gen(function* () {
-          yield* ensureDataDir;
+        withSpan(
+          "storage.save",
+          {
+            "storage.operation": "save",
+            "storage.conversation_id": conversation.id,
+          },
+          Effect.gen(function* () {
+            const startTime = Date.now();
+            yield* ensureDataDir;
 
-          const path = getConversationPath(conversation.id);
+            const path = getConversationPath(conversation.id);
 
-          yield* Effect.tryPromise({
-            try: () =>
-              fs.writeFile(path, JSON.stringify(conversation, null, 2)),
-            catch: (error) =>
-              new StorageError({
-                operation: "saveConversation",
-                path,
-                message: `Failed to save conversation: ${error instanceof Error ? error.message : String(error)}`,
-                cause: error,
-              }),
-          });
-        });
+            const result = yield* Effect.either(
+              Effect.tryPromise({
+                try: () =>
+                  fs.writeFile(path, JSON.stringify(conversation, null, 2)),
+                catch: (error) =>
+                  new StorageError({
+                    operation: "saveConversation",
+                    path,
+                    message: `Failed to save conversation: ${error instanceof Error ? error.message : String(error)}`,
+                    cause: error,
+                  }),
+              })
+            );
+
+            const duration = Date.now() - startTime;
+
+            if (Either.isLeft(result)) {
+              yield* trackStorageOperation("save", duration, true);
+              yield* logError("Storage operation failed", result.left, {
+                operation: "save",
+                conversationId: conversation.id,
+              });
+              return yield* Effect.fail(result.left);
+            }
+
+            yield* trackStorageOperation("save", duration, false);
+          })
+        );
 
       /**
-       * List all conversations (metadata only)
+       * List all conversations for a user (metadata only)
        */
-      const listConversations = Effect.gen(function* () {
-        yield* ensureDataDir;
+      const listConversations = (userId: string) =>
+        withSpan(
+          "storage.list",
+          {
+            "storage.operation": "list",
+            "storage.user_id": userId,
+          },
+          Effect.gen(function* () {
+            const startTime = Date.now();
+            yield* ensureDataDir;
 
         const files = yield* Effect.tryPromise({
           try: () => fs.readdir(config.dataDir),
@@ -279,7 +358,8 @@ export class StorageService extends Effect.Service<StorageService>()(
 
             if (Either.isRight(conversation)) {
               const conv = conversation.right;
-              if (conv) {
+              // Filter by user_id
+              if (conv && conv.user_id === userId) {
                 conversations.push({
                   id: conv.id,
                   created_at: conv.created_at,
@@ -298,8 +378,11 @@ export class StorageService extends Effect.Service<StorageService>()(
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
+        const duration = Date.now() - startTime;
+        yield* trackStorageOperation("list", duration, false);
         return conversations;
-      });
+      })
+        );
 
       /**
        * Add a user message to a conversation
@@ -392,69 +475,4 @@ export class StorageService extends Effect.Service<StorageService>()(
   }
 ) {}
 
-// Create a default layer that provides both AppConfig and StorageService
-export const StorageServiceLive = StorageService.Default.pipe(
-  Layer.provide(AppConfig.Default)
-);
-
-// Standalone function exports for backward compatibility
-export const createConversation = (conversationId: string) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.createConversation(conversationId);
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
-
-export const getConversation = (conversationId: string) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.getConversation(conversationId);
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
-
-export const listConversations = () =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.listConversations;
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
-
-export const addUserMessage = (conversationId: string, content: string) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.addUserMessage(conversationId, content);
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
-
-export const addAssistantMessage = (
-  conversationId: string,
-  stage1: Stage1Response[],
-  stage2: Stage2Response[],
-  stage3: Stage3Response
-) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.addAssistantMessage(
-        conversationId,
-        stage1,
-        stage2,
-        stage3
-      );
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
-
-export const updateConversationTitle = (
-  conversationId: string,
-  title: string
-) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const storage = yield* StorageService;
-      return yield* storage.updateConversationTitle(conversationId, title);
-    }).pipe(Effect.provide(StorageServiceLive))
-  );
+import { BaseServicesLayer } from "./runtime";

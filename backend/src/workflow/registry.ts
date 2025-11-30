@@ -5,6 +5,7 @@
 
 import type { WorkflowDefinition } from "./core/workflow"
 import { createLLMCouncilWorkflow } from "./workflows/llm-council"
+import { createLinearDefaultWorkflow } from "./workflows/linear-default"
 
 /**
  * Metadata about a workflow for listing/discovery
@@ -74,14 +75,27 @@ export class WorkflowRegistry {
     councilModels: readonly string[],
     chairmanModel: string
   ): void {
+    // Register LLM Council workflow
     const llmCouncilWorkflow = createLLMCouncilWorkflow({
       councilModels,
       chairmanModel,
       systemPrompt:
         "You are a helpful, knowledgeable AI assistant. Provide clear, accurate, and thoughtful responses."
     })
-
     this.register(llmCouncilWorkflow)
+
+    // Register default linear workflow
+    // Uses a simple 3-stage linear chain with one model per stage
+    const linearWorkflow = createLinearDefaultWorkflow({
+      models: [
+        councilModels[0] || "openai/gpt-5.1",
+        councilModels[1] || "google/gemini-3-pro-preview",
+        chairmanModel
+      ],
+      systemPrompt:
+        "You are a helpful, knowledgeable AI assistant. Provide clear, accurate, and thoughtful responses."
+    })
+    this.register(linearWorkflow)
   }
 
   /**

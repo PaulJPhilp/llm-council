@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { Effect } from "effect"
+import { Effect, Runtime } from "effect"
 import { BaseStage } from "./stage"
 import { executeWorkflow } from "./executor"
 import type { WorkflowServices } from "./context"
+import { TestLayer } from "../../runtime.test"
 
 // Mock services for testing
 const createMockServices = (): WorkflowServices => ({
@@ -55,7 +56,7 @@ describe("Workflow Executor", () => {
       const result = await Effect.runPromise(
         executeWorkflow(workflow, "test query", mockServices, (event) => {
           events.push(event)
-        })
+        }).pipe(Effect.provide(TestLayer))
       )
 
       expect(result.stageResults.size).toBe(3)
@@ -93,7 +94,7 @@ describe("Workflow Executor", () => {
           if (event.type === "stage_start") {
             executionOrder.push(event.stageId!)
           }
-        })
+        }).pipe(Effect.provide(TestLayer))
       )
 
       // stage1 should execute first
@@ -123,7 +124,7 @@ describe("Workflow Executor", () => {
       }
 
       const result = await Effect.runPromise(
-        executeWorkflow(workflow, "test query", mockServices)
+        executeWorkflow(workflow, "test query", mockServices).pipe(Effect.provide(TestLayer))
       )
 
       expect(result.stageResults.size).toBe(4)
@@ -147,9 +148,7 @@ describe("Workflow Executor", () => {
       let errorThrown = false
       let errorMessage = ""
       try {
-        await Effect.runPromise(
-          executeWorkflow(workflow, "test query", mockServices)
-        )
+        await Effect.runPromise(executeWorkflow(workflow, "test query", mockServices.pipe(Effect.provide(TestLayer)))
       } catch (error) {
         errorThrown = true
         errorMessage = error instanceof Error ? error.message : String(error)
@@ -174,9 +173,7 @@ describe("Workflow Executor", () => {
       let errorThrown = false
       let errorMessage = ""
       try {
-        await Effect.runPromise(
-          executeWorkflow(workflow, "test query", mockServices)
-        )
+        await Effect.runPromise(executeWorkflow(workflow, "test query", mockServices.pipe(Effect.provide(TestLayer)))
       } catch (error) {
         errorThrown = true
         errorMessage = error instanceof Error ? error.message : String(error)
@@ -199,9 +196,7 @@ describe("Workflow Executor", () => {
       let errorThrown = false
       let errorMessage = ""
       try {
-        await Effect.runPromise(
-          executeWorkflow(workflow, "test query", mockServices)
-        )
+        await Effect.runPromise(executeWorkflow(workflow, "test query", mockServices.pipe(Effect.provide(TestLayer)))
       } catch (error) {
         errorThrown = true
         errorMessage = error instanceof Error ? error.message : String(error)
@@ -222,9 +217,7 @@ describe("Workflow Executor", () => {
       let errorThrown = false
       let errorMessage = ""
       try {
-        await Effect.runPromise(
-          executeWorkflow(workflow, "test query", mockServices)
-        )
+        await Effect.runPromise(executeWorkflow(workflow, "test query", mockServices.pipe(Effect.provide(TestLayer)))
       } catch (error) {
         errorThrown = true
         errorMessage = error instanceof Error ? error.message : String(error)
@@ -251,7 +244,7 @@ describe("Workflow Executor", () => {
       await Effect.runPromise(
         executeWorkflow(workflow, "test query", mockServices, (event) => {
           events.push(event)
-        })
+        }).pipe(Effect.provide(TestLayer))
       )
 
       const startEvents = events.filter((e) => e.type === "stage_start")
@@ -295,7 +288,7 @@ describe("Workflow Executor", () => {
       await Effect.runPromise(
         executeWorkflow(workflow, "test query", mockServices, (event) => {
           events.push(event)
-        })
+        }).pipe(Effect.provide(TestLayer))
       )
 
       const completeEvent = events.find((e) => e.type === "stage_complete" && e.stageId === "stage1")
@@ -315,7 +308,7 @@ describe("Workflow Executor", () => {
       }
 
       const result = await Effect.runPromise(
-        executeWorkflow(workflow, "test query", mockServices)
+        executeWorkflow(workflow, "test query", mockServices).pipe(Effect.provide(TestLayer))
       )
 
       expect(result.executionTimeMs).toBeGreaterThanOrEqual(0)

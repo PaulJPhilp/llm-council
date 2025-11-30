@@ -20,18 +20,28 @@ class LiquidTemplateEngine implements TemplateEngine {
     templateString: string,
     context: TemplateContext
   ): Effect.Effect<string, TemplateError> {
-    return Effect.promise(async () => {
-      try {
-        const tpl = this.engine.parse(templateString)
-        return await this.engine.render(tpl, context)
-      } catch (error) {
-        throw new TemplateError({
-          message: error instanceof Error ? error.message : String(error),
-          templateName: "inline",
-          cause: error
-        })
-      }
-    })
+    const engine = this.engine;
+    return Effect.gen(function* () {
+      const tpl = yield* Effect.try({
+        try: () => engine.parse(templateString),
+        catch: (error) =>
+          new TemplateError({
+            message: error instanceof Error ? error.message : String(error),
+            templateName: "inline",
+            cause: error,
+          }),
+      });
+
+      return yield* Effect.tryPromise({
+        try: () => engine.render(tpl, context),
+        catch: (error) =>
+          new TemplateError({
+            message: error instanceof Error ? error.message : String(error),
+            templateName: "inline",
+            cause: error,
+          }),
+      });
+    });
   }
 
   /**
@@ -41,35 +51,46 @@ class LiquidTemplateEngine implements TemplateEngine {
     template: Template,
     context: TemplateContext
   ): Effect.Effect<string, TemplateError> {
-    return Effect.promise(async () => {
-      try {
-        const tpl = this.engine.parse(template.content)
-        return await this.engine.render(tpl, context)
-      } catch (error) {
-        throw new TemplateError({
-          message: error instanceof Error ? error.message : String(error),
-          templateName: template.name,
-          cause: error
-        })
-      }
-    })
+    const engine = this.engine;
+    return Effect.gen(function* () {
+      const tpl = yield* Effect.try({
+        try: () => engine.parse(template.content),
+        catch: (error) =>
+          new TemplateError({
+            message: error instanceof Error ? error.message : String(error),
+            templateName: template.name,
+            cause: error,
+          }),
+      });
+
+      return yield* Effect.tryPromise({
+        try: () => engine.render(tpl, context),
+        catch: (error) =>
+          new TemplateError({
+            message: error instanceof Error ? error.message : String(error),
+            templateName: template.name,
+            cause: error,
+          }),
+      });
+    });
   }
 
   /**
    * Validate template syntax
    */
   validate(templateString: string): Effect.Effect<void, TemplateError> {
-    return Effect.sync(() => {
-      try {
-        this.engine.parse(templateString)
-      } catch (error) {
-        throw new TemplateError({
+    const engine = this.engine;
+    return Effect.try({
+      try: () => {
+        engine.parse(templateString);
+      },
+      catch: (error) =>
+        new TemplateError({
           message: error instanceof Error ? error.message : String(error),
           templateName: "validation",
-          cause: error
-        })
-      }
-    })
+          cause: error,
+        }),
+    });
   }
 }
 

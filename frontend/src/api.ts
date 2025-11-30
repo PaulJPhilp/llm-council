@@ -2,6 +2,7 @@
  * API client for the LLM Council backend.
  */
 
+import { parseSSEStream } from "./lib/sse-parser";
 import type {
   Conversation,
   ConversationMetadata,
@@ -13,7 +14,39 @@ import type {
   DAGRepresentation,
 } from "./types";
 
-const API_BASE = "http://localhost:8001";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8001";
+
+// Get authentication token from environment or localStorage
+const getAuthToken = (): string | null => {
+  // Check environment variable first (for development)
+  const envToken = import.meta.env.VITE_AUTH_TOKEN;
+  if (envToken) return envToken;
+  
+  // Check localStorage (for production)
+  return localStorage.getItem("auth_token");
+};
+
+// Create headers with authentication
+const createHeaders = (includeContentType = false): HeadersInit => {
+  const headers: HeadersInit = {};
+  
+  if (includeContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  const token = getAuthToken();
+  if (token) {
+    // Support both Bearer and ApiKey formats
+    if (token.startsWith("Bearer ") || token.startsWith("ApiKey ")) {
+      headers["Authorization"] = token;
+    } else {
+      // Default to Bearer token
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  
+  return headers;
+};
 
 type StreamEventCallback = (eventType: string, event: StreamEvent) => void;
 
@@ -22,7 +55,9 @@ export const api = {
    * List all conversations.
    */
   async listConversations(): Promise<ConversationMetadata[]> {
-    const response = await fetch(`${API_BASE}/api/conversations`);
+    const response = await fetch(`${API_BASE}/api/conversations`, {
+      headers: createHeaders(),
+    });
     if (!response.ok) {
       throw new Error("Failed to list conversations");
     }
@@ -35,9 +70,7 @@ export const api = {
   async createConversation(): Promise<Conversation> {
     const response = await fetch(`${API_BASE}/api/conversations`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: createHeaders(true),
       body: JSON.stringify({}),
     });
     if (!response.ok) {
@@ -51,7 +84,10 @@ export const api = {
    */
   async getConversation(conversationId: string): Promise<Conversation> {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}`
+      `${API_BASE}/api/conversations/${conversationId}`,
+      {
+        headers: createHeaders(),
+      }
     );
     if (!response.ok) {
       throw new Error("Failed to get conversation");
@@ -60,90 +96,35 @@ export const api = {
   },
 
   /**
-   * Send a message in a conversation.
+   * Send a message in a conversation (deprecated - use executeWorkflowStream instead).
+   * @deprecated Use executeWorkflowStream instead
    */
   async sendMessage(
     conversationId: string,
     content: string
   ): Promise<SendMessageResponse> {
-    const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}/message`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content }),
-      }
-    );
-    if (!response.ok) {
-      throw new Error("Failed to send message");
-    }
-    return response.json();
+    throw new Error("sendMessage is deprecated. Use executeWorkflowStream instead.");
   },
 
   /**
-   * Send a message and receive streaming updates.
+   * Send a message and receive streaming updates (deprecated - use executeWorkflowStream instead).
+   * @deprecated Use executeWorkflowStream instead
    */
   async sendMessageStream(
     conversationId: string,
     content: string,
     onEvent: StreamEventCallback
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}/message/stream`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to send message");
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No readable stream returned");
-    }
-
-    const decoder = new TextDecoder();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            try {
-              const event = JSON.parse(data) as StreamEvent;
-              onEvent(event.type, event);
-            } catch (e) {
-              console.error("Failed to parse SSE event:", e);
-            }
-          }
-        }
-      }
-    } finally {
-      reader.cancel();
-    }
+    throw new Error("sendMessageStream is deprecated. Use executeWorkflowStream instead.");
   },
 
   /**
-   * List all available workflows (v3 API).
+   * List all available workflows.
    */
   async listWorkflows(): Promise<WorkflowMetadata[]> {
-    const response = await fetch(`${API_BASE}/api/v3/workflows`);
+    const response = await fetch(`${API_BASE}/api/workflows`, {
+      headers: createHeaders(),
+    });
     if (!response.ok) {
       throw new Error("Failed to list workflows");
     }
@@ -151,12 +132,14 @@ export const api = {
   },
 
   /**
-   * Get a specific workflow definition with DAG (v3 API).
+   * Get a specific workflow definition with DAG.
    */
   async getWorkflow(
     workflowId: string
   ): Promise<WorkflowDefinition & { dag: DAGRepresentation }> {
-    const response = await fetch(`${API_BASE}/api/v3/workflows/${workflowId}`);
+    const response = await fetch(`${API_BASE}/api/workflows/${workflowId}`, {
+      headers: createHeaders(),
+    });
     if (!response.ok) {
       throw new Error(`Failed to get workflow: ${workflowId}`);
     }
@@ -164,7 +147,7 @@ export const api = {
   },
 
   /**
-   * Execute a workflow and receive streaming progress updates (v3 API).
+   * Execute a workflow and receive streaming progress updates.
    */
   async executeWorkflowStream(
     conversationId: string,
@@ -173,18 +156,17 @@ export const api = {
     onEvent: (event: WorkflowProgressEvent) => void
   ): Promise<void> {
     const response = await fetch(
-      `${API_BASE}/api/v3/conversations/${conversationId}/execute/stream`,
+      `${API_BASE}/api/conversations/${conversationId}/execute/stream`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: createHeaders(true),
         body: JSON.stringify({ content, workflowId }),
       }
     );
 
     if (!response.ok) {
-      throw new Error("Failed to execute workflow");
+      const errorText = await response.text().catch(() => "Failed to execute workflow");
+      throw new Error(errorText || "Failed to execute workflow");
     }
 
     const reader = response.body?.getReader();
@@ -192,32 +174,10 @@ export const api = {
       throw new Error("No readable stream returned");
     }
 
-    const decoder = new TextDecoder();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            try {
-              const event = JSON.parse(data) as WorkflowProgressEvent;
-              onEvent(event);
-            } catch (e) {
-              console.error("Failed to parse workflow event:", e);
-            }
-          }
-        }
-      }
-    } finally {
-      reader.cancel();
-    }
+    await parseSSEStream(reader, {
+      onEvent: (_eventType, event) => {
+        onEvent(event as WorkflowProgressEvent);
+      },
+    });
   },
 };

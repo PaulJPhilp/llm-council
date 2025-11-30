@@ -14,3 +14,7 @@ export { createPeerRankingStage, parseRankingFromText, calculateAggregateRanking
 // Synthesis Stage - Stage 3
 export * from "./synthesis"
 export { createSynthesisStage } from "./synthesis"
+
+// Simple Query Stage - For linear workflows
+export * from "./simple-query"
+export { createSimpleQueryStage } from "./simple-query"

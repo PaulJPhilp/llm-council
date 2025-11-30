@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
-import type { WorkflowDefinition, WorkflowProgressEvent } from "../types"
+import type { WorkflowDefinition, WorkflowProgressEvent, DAGRepresentation } from "../types"
 import { WorkflowDAG } from "./WorkflowDAG"
+import { WorkflowTreeView } from "./WorkflowTreeView"
 import { StageResultsPanel } from "./StageResultsPanel"
+import { Button } from "./ui/button"
+import { LayoutGrid, FolderTree } from "lucide-react"
 
 interface WorkflowExecutionViewProps {
-  workflow: WorkflowDefinition & { dag: { nodes: any[]; edges: any[] } }
+  workflow: WorkflowDefinition & { dag: DAGRepresentation }
   progressEvents: WorkflowProgressEvent[]
   isExecuting?: boolean
   onSelectStage?: (stageId: string) => void
@@ -17,6 +20,8 @@ interface StageResult {
   error?: string
 }
 
+type ViewMode = "tree" | "dag"
+
 export function WorkflowExecutionView({
   workflow,
   progressEvents,
@@ -25,6 +30,7 @@ export function WorkflowExecutionView({
 }: WorkflowExecutionViewProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>()
   const [stageResults, setStageResults] = useState<StageResult[]>([])
+  const [viewMode, setViewMode] = useState<ViewMode>("tree")
 
   // Build stage results from workflow stages and progress events
   useEffect(() => {
@@ -66,30 +72,69 @@ export function WorkflowExecutionView({
   }
 
   return (
-    <div className="flex h-full gap-0">
-      {/* DAG Visualization - Takes majority of space */}
-      <div className="flex-1 min-w-0 bg-white">
+    <div className="flex h-full gap-0 flex-col">
+      {/* View Mode Toggle */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">View:</span>
+          <div className="flex gap-1">
+            <Button
+              variant={viewMode === "tree" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("tree")}
+              className="h-7 px-3 text-xs"
+            >
+              <FolderTree className="h-3 w-3 mr-1.5" />
+              Tree
+            </Button>
+            <Button
+              variant={viewMode === "dag" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("dag")}
+              className="h-7 px-3 text-xs"
+            >
+              <LayoutGrid className="h-3 w-3 mr-1.5" />
+              DAG
+            </Button>
+          </div>
+        </div>
         {isExecuting && (
-          <div className="absolute top-4 right-4 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+          <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium">
             Executing...
           </div>
         )}
-        <WorkflowDAG
-          nodes={workflow.dag.nodes}
-          edges={workflow.dag.edges}
-          progressEvents={progressEvents}
-          onSelectNode={handleSelectNode}
-          selectedNodeId={selectedNodeId}
-        />
       </div>
 
-      {/* Stage Results Panel - Fixed width sidebar */}
-      <div className="w-80 border-l border-gray-200">
-        <StageResultsPanel
-          stages={stageResults}
-          selectedStageId={selectedNodeId}
-          onSelectStage={handleSelectStage}
-        />
+      <div className="flex flex-1 gap-0 overflow-hidden">
+        {/* Main Visualization Area */}
+        <div className="flex-1 min-w-0 bg-background relative">
+          {viewMode === "tree" ? (
+            <WorkflowTreeView
+              nodes={workflow.dag.nodes}
+              edges={workflow.dag.edges}
+              progressEvents={progressEvents}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={handleSelectNode}
+            />
+          ) : (
+            <WorkflowDAG
+              nodes={workflow.dag.nodes}
+              edges={workflow.dag.edges}
+              progressEvents={progressEvents}
+              onSelectNode={handleSelectNode}
+              selectedNodeId={selectedNodeId}
+            />
+          )}
+        </div>
+
+        {/* Stage Results Panel - Fixed width sidebar */}
+        <div className="w-80 border-l border-border">
+          <StageResultsPanel
+            stages={stageResults}
+            selectedStageId={selectedNodeId}
+            onSelectStage={handleSelectStage}
+          />
+        </div>
       </div>
     </div>
   )

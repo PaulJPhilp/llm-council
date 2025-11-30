@@ -1,13 +1,18 @@
-import { ReactNode } from "react"
-import Sidebar from "./Sidebar"
-import type { ConversationMetadata } from "../types"
+import { ReactNode } from "react";
+import Sidebar from "./Sidebar";
+import type { ConversationMetadata } from "../types";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "./ui/sidebar";
 
 interface LayoutProps {
-  conversations: ConversationMetadata[]
-  currentConversationId?: string
-  onSelectConversation: (conversationId: string) => void
-  onNewConversation: () => void
-  children?: ReactNode
+  conversations: ConversationMetadata[];
+  currentConversationId?: string;
+  onSelectConversation: (conversationId: string) => void;
+  onNewConversation: () => void;
+  children?: ReactNode;
 }
 
 export function Layout({
@@ -18,28 +23,25 @@ export function Layout({
   children,
 }: LayoutProps) {
   return (
-    <div className="flex h-screen w-screen bg-gray-50">
-      {/* Left Sidebar - Conversation List */}
-      <aside className="w-64 border-r border-gray-200 bg-white flex flex-col overflow-hidden">
-        <Sidebar
-          conversations={conversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={onSelectConversation}
-          onNewConversation={onNewConversation}
-        />
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Main Content - Chat Area */}
-        <div className="flex-1 overflow-hidden bg-white">
+    <SidebarProvider>
+      <Sidebar
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onSelectConversation={onSelectConversation}
+        onNewConversation={onNewConversation}
+      />
+      <SidebarInset>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <div className="flex flex-1 flex-col overflow-hidden">
           {children || (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <p>Select or create a conversation to begin</p>
             </div>
           )}
         </div>
-      </main>
-    </div>
-  )
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }

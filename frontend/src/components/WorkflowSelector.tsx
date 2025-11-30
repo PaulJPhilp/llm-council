@@ -1,96 +1,115 @@
-import { useEffect, useState } from "react"
-import type { WorkflowMetadata } from "../types"
-import { api } from "../api"
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import type { WorkflowMetadata } from "../types";
+import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 
 interface WorkflowSelectorProps {
-  onSelectWorkflow: (workflowId: string) => void
-  isLoading?: boolean
+	onSelectWorkflow: (workflowId: string) => void;
+	isLoading?: boolean;
 }
 
 export function WorkflowSelector({
-  onSelectWorkflow,
-  isLoading = false,
+	onSelectWorkflow,
+	isLoading = false,
 }: WorkflowSelectorProps) {
-  const [workflows, setWorkflows] = useState<WorkflowMetadata[]>([])
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>("")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+	const [workflows, setWorkflows] = useState<WorkflowMetadata[]>([]);
+	const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>("");
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadWorkflows()
-  }, [])
+	useEffect(() => {
+		loadWorkflows();
+	}, []);
 
-  async function loadWorkflows() {
-    try {
-      setLoading(true)
-      setError(null)
-      const workflowList = await api.listWorkflows()
-      setWorkflows(workflowList)
-      if (workflowList.length > 0) {
-        setSelectedWorkflowId(workflowList[0].id)
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load workflows"
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
+	async function loadWorkflows() {
+		try {
+			setLoading(true);
+			setError(null);
+			const workflowList = await api.listWorkflows();
+			setWorkflows(workflowList);
+			if (workflowList.length > 0) {
+				// Check for persisted selection first
+				const persisted = localStorage.getItem("selected_workflow_id");
+				const initialId = persisted && workflowList.find(w => w.id === persisted)
+					? persisted
+					: workflowList[0].id;
+				setSelectedWorkflowId(initialId);
+				onSelectWorkflow(initialId);
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load workflows");
+		} finally {
+			setLoading(false);
+		}
+	}
 
-  function handleSelectWorkflow(workflowId: string) {
-    setSelectedWorkflowId(workflowId)
-    onSelectWorkflow(workflowId)
-  }
+	function handleSelectWorkflow(workflowId: string) {
+		setSelectedWorkflowId(workflowId);
+		onSelectWorkflow(workflowId);
+	}
 
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-2">
-        <div className="text-sm text-gray-500">Loading workflows...</div>
-      </div>
-    )
-  }
+	if (loading) {
+		return (
+			<div className="flex items-center gap-2 px-4 py-2">
+				<div className="text-sm text-muted-foreground">Loading workflows...</div>
+			</div>
+		);
+	}
 
-  if (error) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-2">
-        <div className="text-sm text-red-600">{error}</div>
-        <button
-          onClick={loadWorkflows}
-          className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-        >
-          Retry
-        </button>
-      </div>
-    )
-  }
+	if (error) {
+		return (
+			<div className="flex items-center gap-2 px-4 py-2">
+				<div className="text-sm text-destructive">{error}</div>
+				<Button
+					onClick={loadWorkflows}
+					variant="outline"
+					size="sm"
+					className="text-xs"
+				>
+					Retry
+				</Button>
+			</div>
+		);
+	}
 
-  if (workflows.length === 0) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-2">
-        <div className="text-sm text-gray-500">No workflows available</div>
-      </div>
-    )
-  }
+	if (workflows.length === 0) {
+		return (
+			<div className="flex items-center gap-2 px-4 py-2">
+				<div className="text-sm text-muted-foreground">No workflows available</div>
+			</div>
+		);
+	}
 
-  return (
-    <div className="flex items-center gap-2 px-4 py-2">
-      <label htmlFor="workflow-select" className="text-sm font-medium">
-        Workflow:
-      </label>
-      <select
-        id="workflow-select"
-        value={selectedWorkflowId}
-        onChange={(e) => handleSelectWorkflow(e.target.value)}
-        disabled={isLoading}
-        className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {workflows.map((workflow) => (
-          <option key={workflow.id} value={workflow.id}>
-            {workflow.name} (v{workflow.version}) - {workflow.stageCount} stages
-          </option>
-        ))}
-      </select>
-    </div>
-  )
+	return (
+		<div className="flex items-center gap-2 px-4 py-2">
+			<Label htmlFor="workflow-select" className="text-sm font-medium">
+				Workflow:
+			</Label>
+			<Select
+				value={selectedWorkflowId}
+				onValueChange={handleSelectWorkflow}
+				disabled={isLoading}
+			>
+				<SelectTrigger id="workflow-select" className="flex-1">
+					<SelectValue placeholder="Select a workflow" />
+				</SelectTrigger>
+				<SelectContent>
+					{workflows.map((workflow) => (
+						<SelectItem key={workflow.id} value={workflow.id}>
+							{workflow.name} (v{workflow.version}) - {workflow.stageCount}{" "}
+							stages
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		</div>
+	);
 }

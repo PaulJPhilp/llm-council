@@ -8,6 +8,7 @@ import type { OpenRouterClient } from "../../openrouter"
 import type { TemplateEngine } from "../core/template"
 import type { ParallelQueryOutput } from "../stages"
 import type { PeerRankingOutput } from "../stages"
+import { TestLayer } from "../../runtime.test"
 
 // Mock OpenRouter client
 const createMockOpenRouter = (responses: Record<string, { content: string; reasoning_details?: unknown } | null>) => ({
@@ -62,7 +63,7 @@ describe("LLM Council Workflow Integration", () => {
     })
 
     const result = await Effect.runPromise(
-      executeWorkflow(workflow, "What is AI?", services)
+      executeWorkflow(workflow, "What is AI?", services).pipe(Effect.provide(TestLayer))
     )
 
     // Verify all 3 stages have results
@@ -104,7 +105,7 @@ describe("LLM Council Workflow Integration", () => {
     })
 
     const result = await Effect.runPromise(
-      executeWorkflow(workflow, "What is AI?", services)
+      executeWorkflow(workflow, "What is AI?", services).pipe(Effect.provide(TestLayer))
     )
 
     // Should still complete successfully
@@ -150,9 +151,7 @@ FINAL RANKING:
       templateEngine
     )
 
-    const result = await Effect.runPromise(
-      executeWorkflow(customWorkflow, "What is AI?", services)
-    )
+    const result = await Effect.runPromise(executeWorkflow(customWorkflow, "What is AI?", services.pipe(Effect.provide(TestLayer)))
 
     // Check aggregate rankings
     const stage2 = result.stageResults.get("peer-ranking")?.data as PeerRankingOutput
@@ -183,7 +182,7 @@ FINAL RANKING:
     })
 
     const result = await Effect.runPromise(
-      Effect.flip(executeWorkflow(workflow, "What is AI?", services))
+      Effect.flip(executeWorkflow(workflow, "What is AI?", services)).pipe(Effect.provide(TestLayer))
     )
 
     // Should be a stage execution error because all models failed
@@ -213,7 +212,7 @@ FINAL RANKING:
     }
 
     await Effect.runPromise(
-      executeWorkflow(workflow, "What is AI?", services, onProgress)
+      executeWorkflow(workflow, "What is AI?", services, onProgress).pipe(Effect.provide(TestLayer))
     )
 
     // Should have stage events
@@ -249,7 +248,7 @@ FINAL RANKING:
     })
 
     const result = await Effect.runPromise(
-      executeWorkflow(workflow, "What is AI?", services)
+      executeWorkflow(workflow, "What is AI?", services).pipe(Effect.provide(TestLayer))
     )
 
     // Check stage 1 reasoning
@@ -281,9 +280,7 @@ FINAL RANKING:
       synthesisPromptTemplate: "Custom synthesis prompt: {{ userQuery }}"
     })
 
-    const result = await Effect.runPromise(
-      executeWorkflow(workflow, "Test question?", services)
-    )
+    const result = await Effect.runPromise(executeWorkflow(workflow, "Test question?", services.pipe(Effect.provide(TestLayer)))
 
     expect(result.stageResults.size).toBe(3)
   })
@@ -306,7 +303,7 @@ FINAL RANKING:
     })
 
     const result = await Effect.runPromise(
-      executeWorkflow(workflow, "What is AI?", services)
+      executeWorkflow(workflow, "What is AI?", services).pipe(Effect.provide(TestLayer))
     )
 
     // Stage 2 should have label mapping that matches stage 1 models

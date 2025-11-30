@@ -15,6 +15,7 @@ import type { StageResult } from "../core/stage"
 import type { OpenRouterClient } from "../../openrouter"
 import type { TemplateEngine } from "../core/template"
 import type { WorkflowServices } from "../core/context"
+import { TestLayer } from "../../runtime.test"
 
 // Helper to create dependency maps for test execution
 const createEmptyDependencies = (): ReadonlyMap<string, StageResult> => new Map()
@@ -100,7 +101,9 @@ describe("ParallelQueryStage", () => {
       templateEngine
     )
 
-    const result = await Effect.runPromise(stage.execute(ctx, createEmptyDependencies()))
+    const result = await Effect.runPromise(
+      stage.execute(ctx, createEmptyDependencies()).pipe(Effect.provide(TestLayer))
+    )
 
     expect(result.data.queries).toHaveLength(2)
     expect(result.data.successCount).toBe(2)
@@ -120,7 +123,9 @@ describe("ParallelQueryStage", () => {
       templateEngine
     )
 
-    const result = await Effect.runPromise(stage.execute(ctx, createEmptyDependencies()))
+    const result = await Effect.runPromise(
+      stage.execute(ctx, createEmptyDependencies()).pipe(Effect.provide(TestLayer))
+    )
 
     expect(result.data.queries).toHaveLength(2)
     expect(result.data.successCount).toBe(1)
@@ -141,7 +146,7 @@ describe("ParallelQueryStage", () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.flip(stage.execute(ctx, createEmptyDependencies()))
+      Effect.flip(stage.execute(ctx, createEmptyDependencies())).pipe(Effect.provide(TestLayer))
     )
 
     expect(result._tag).toBe("StageExecutionError")
@@ -162,7 +167,7 @@ describe("ParallelQueryStage", () => {
       templateEngine
     )
 
-    const result = await Effect.runPromise(stageWithTemplate.execute(ctx, createEmptyDependencies()))
+    const result = await Effect.runPromise(stageWithTemplate.execute(ctx, createEmptyDependencies(.pipe(Effect.provide(TestLayer))))
 
     expect(result.data).toBeDefined()
   })
@@ -177,7 +182,9 @@ describe("ParallelQueryStage", () => {
       templateEngine
     )
 
-    const result = await Effect.runPromise(stage.execute(ctx, createEmptyDependencies()))
+    const result = await Effect.runPromise(
+      stage.execute(ctx, createEmptyDependencies()).pipe(Effect.provide(TestLayer))
+    )
 
     expect(result.data.queries[0].reasoning).toEqual({ steps: 5 })
   })
@@ -259,7 +266,9 @@ FINAL RANKING:
       "What is AI?"
     )
 
-    const result = await Effect.runPromise(stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)))
+    const result = await Effect.runPromise(
+      stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)).pipe(Effect.provide(TestLayer))
+    )
 
     expect(result.data.rankings).toHaveLength(2)
     expect(result.data.rankings[0].model).toBe("evaluator-a")
@@ -283,7 +292,9 @@ FINAL RANKING:
       "What is AI?"
     )
 
-    const result = await Effect.runPromise(stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)))
+    const result = await Effect.runPromise(
+      stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)).pipe(Effect.provide(TestLayer))
+    )
 
     expect(result.data.labelToModel["Response A"]).toBe("model-a")
     expect(result.data.labelToModel["Response B"]).toBe("model-b")
@@ -338,7 +349,9 @@ FINAL RANKING:
 
     let executed = false
     try {
-      const result = await Effect.runPromise(stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)))
+      const result = await Effect.runPromise(
+      stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)).pipe(Effect.provide(TestLayer))
+    )
       executed = !!result && result.data !== null
     } catch {
       // Should not throw
@@ -360,7 +373,7 @@ FINAL RANKING:
     )
 
     const result = await Effect.runPromise(
-      Effect.flip(stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput)))
+      Effect.flip(stage.execute(ctx, createPeerRankingDependencies(parallelQueryOutput))).pipe(Effect.provide(TestLayer))
     )
 
     expect(result._tag).toBe("StageExecutionError")
@@ -423,7 +436,7 @@ describe("SynthesisStage", () => {
     let hasCorrectAnswer = false
     try {
       const result = await Effect.runPromise(
-        stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput))
+        stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput)).pipe(Effect.provide(TestLayer))
       )
       if (result && result.data?.finalAnswer === "Final synthesis answer") {
         hasCorrectAnswer = true
@@ -470,7 +483,7 @@ describe("SynthesisStage", () => {
     }
 
     const result = await Effect.runPromise(
-      Effect.flip(stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput)))
+      Effect.flip(stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput))).pipe(Effect.provide(TestLayer))
     )
 
     expect(result._tag).toBe("StageExecutionError")
@@ -516,7 +529,7 @@ describe("SynthesisStage", () => {
     let hasReasoning = false
     try {
       const result = await Effect.runPromise(
-        stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput))
+        stage.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput)).pipe(Effect.provide(TestLayer))
       )
       if (result && result.data?.reasoning && (result.data.reasoning as any).analysis === "detailed") {
         hasReasoning = true
@@ -563,7 +576,9 @@ describe("SynthesisStage", () => {
 
     let errorThrown = false
     try {
-      await Effect.runPromise(stage.execute(ctx, incompleteDependencies))
+      await Effect.runPromise(
+        stage.execute(ctx, incompleteDependencies).pipe(Effect.provide(TestLayer))
+      )
     } catch (error) {
       errorThrown = true
     }
@@ -613,8 +628,7 @@ describe("SynthesisStage", () => {
 
     let executed = false
     try {
-      const result = await Effect.runPromise(
-        stageWithTemplate.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput))
+      const result = await Effect.runPromise(stageWithTemplate.execute(ctx, createSynthesisDependencies(parallelQueryOutput, peerRankingOutput.pipe(Effect.provide(TestLayer)))
       )
       if (result && result.data) {
         executed = true

@@ -52,12 +52,14 @@ export type AssistantMessage = {
   stage2: Stage2Ranking[];
   stage3: Stage3Response;
   metadata?: CouncilMetadata;
+  id?: string; // Optional ID for stable React keys
 };
 
 /** User message */
 export type UserMessage = {
   role: "user";
   content: string;
+  id?: string; // Optional ID for stable React keys
 };
 
 /** Union of all message types */
@@ -122,6 +124,11 @@ export type StreamEvent = {
   type: StreamEventType;
   data?: unknown;
   error?: string;
+  metadata?: {
+    label_to_model?: LabelToModelMap;
+    aggregate_rankings?: AggregateRanking[];
+    [key: string]: unknown;
+  };
 };
 
 /** Type guard for assistant messages */
@@ -187,17 +194,17 @@ export type DAGRepresentation = {
 
 /** Workflow progress event types */
 export type WorkflowProgressEventType =
-  | "workflow_start"
   | "stage_start"
   | "stage_complete"
-  | "workflow_complete"
-  | "error";
+  | "stage_error"
+  | "workflow_complete";
 
 /** Workflow progress event structure */
 export type WorkflowProgressEvent = {
   type: WorkflowProgressEventType;
   stageId?: string;
   data?: unknown;
+  metadata?: unknown;
   timestamp?: string;
   message?: string;
 };

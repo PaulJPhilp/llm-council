@@ -535,6 +535,23 @@ Generated from 130+ published patterns. These rules provide best practices for w
 
 ---
 
+### Never Use try/catch in Application Code
+
+**Rule:** Replace all try/catch blocks with Effect.try, Effect.tryPromise, or Effect.catchAll.
+
+**Use Cases:** Error Handling, Code Quality
+
+- Use `Effect.try()` for synchronous code that may throw
+- Use `Effect.tryPromise()` for Promise-based code
+- Use `Effect.catchAll()` for error recovery within Effect chains
+- Use `Effect.catchTag()` for specific error type handling
+- **Exception:** try/catch is ONLY allowed in test files (`.test.ts`, `.spec.ts`)
+- All application code must use Effect error handling
+
+**Anti-Pattern:** Using try/catch blocks in application code, which breaks composability and type safety.
+
+---
+
 ### Write Sequential Code with Effect.gen
 
 **Rule:** Write sequential code with Effect.gen.

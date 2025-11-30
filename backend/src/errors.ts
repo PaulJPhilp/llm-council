@@ -37,17 +37,6 @@ export class ConversationNotFoundError extends Data.TaggedError(
   readonly conversationId: string;
 }> {}
 
-// Council orchestration errors
-export class StageError extends Data.TaggedError("StageError")<{
-  readonly stage: 1 | 2 | 3;
-  readonly message: string;
-  readonly failedModels?: string[];
-}> {}
-
-export class CouncilError extends Data.TaggedError("CouncilError")<{
-  readonly stage: 1 | 2 | 3;
-  readonly message: string;
-}> {}
 
 export class ValidationError extends Data.TaggedError("ValidationError")<{
   readonly field: string;
@@ -59,4 +48,13 @@ export class ValidationError extends Data.TaggedError("ValidationError")<{
 export class ConfigError extends Data.TaggedError("ConfigError")<{
   readonly key: string;
   readonly message: string;
+}> {}
+
+// Rate limiting errors
+export class RateLimitError extends Data.TaggedError("RateLimitError")<{
+  readonly message: string;
+  readonly identifier: string;
+  readonly limit: number;
+  readonly windowMs: number;
+  readonly retryAfter?: number; // seconds until limit resets
 }> {}

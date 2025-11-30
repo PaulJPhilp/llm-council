@@ -4,6 +4,7 @@
  */
 
 export { createLLMCouncilWorkflow, type LLMCouncilConfig } from "./llm-council"
+export { createLinearDefaultWorkflow, type LinearDefaultConfig } from "./linear-default"
 export {
   runFullCouncilWorkflow,
   runFullCouncilWorkflowWithProgress,
